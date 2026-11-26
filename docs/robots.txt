@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://ibrahimchaudharyofficial-hash.github.io/zentrix-ai/sitemap.xml
