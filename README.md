@@ -11,7 +11,7 @@ This release focuses the visible workspace on school-level mathematics: arithmet
 Core local calculation, photo OCR, optional connected AI providers, learning tools, games, graphing and local progress remain available.
 
 
-**Mathematics Without Limits.** Created by M. Ayaan Chaudhry; developed with assistance from ChatGPT.
+**Mathematics Without Limits.** Created by Ayaan Chaudhry; developed with assistance from ChatGPT.
 
 ## What’s new in v3.9.0
 
