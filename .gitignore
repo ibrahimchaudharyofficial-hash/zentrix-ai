@@ -1,0 +1,11 @@
+
+.env
+.env.*
+!.env.public.example
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+zentrix_progress.sqlite3
+*.sqlite3-wal
+*.sqlite3-shm
