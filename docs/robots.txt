@@ -1,3 +1,4 @@
+# ZENTRIX AI landing page crawler rules
 User-agent: *
 Allow: /
 
