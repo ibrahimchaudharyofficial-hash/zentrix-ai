@@ -11,7 +11,7 @@ This release focuses the visible workspace on school-level mathematics: arithmet
 Core local calculation, photo OCR, optional connected AI providers, learning tools, games, graphing and local progress remain available.
 
 
-**Mathematics Without Limits.** Created by M. Ayaan Chaudhry; developed with assistance from ChatGPT.
+**Mathematics Without Limits.** Created by Ayaan Chaudhry; developed with assistance from ChatGPT.
 
 ## What’s new in v3.9.0
 
@@ -126,7 +126,7 @@ OCR can misread handwriting, exponents, fractions, and symbols; review the recog
 
 **Release history: current release is v3.4.0.**
 
-**Mathematics Without Limits.** Created by **M.Ayaan Chaudhry**. A local-first mathematical computing workspace built with Python, SymPy, NumPy, SciPy, mpmath, FastAPI, and an optional Google Gemini language interpreter.
+**Mathematics Without Limits.** Created by **Ayaan Chaudhry**. A local-first mathematical computing workspace built with Python, SymPy, NumPy, SciPy, mpmath, FastAPI, and an optional Google Gemini language interpreter.
 
 ## What works now — version 3.4.0
 
@@ -243,7 +243,7 @@ The Punjab coverage remains representative rather than exhaustive; see the v0.8 
 
 ## Expanded school mathematics + welcome screen (v0.8)
 
-On opening the local web app, a welcome screen displays **ZENTRIX AI** and **M.Ayaan Chaudhry** before entering the workspace.
+On opening the local web app, a welcome screen displays **ZENTRIX AI** and **Ayaan Chaudhry** before entering the workspace.
 
 Additional command support added in v0.8:
 
