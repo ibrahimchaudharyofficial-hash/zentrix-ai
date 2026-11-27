@@ -65,15 +65,30 @@
     const heading=make('div','starter-head'); heading.append(make('h2','','3D surface explorer'),make('span','subtle','Drag to rotate'));
     const controls=make('div','graph-controls');
     const expr=make('input','field'); expr.id='zentrix3dExpr'; expr.value='sin(sqrt(x^2+y^2))/sqrt(x^2+y^2)'; expr.placeholder='f(x,y)'; expr.setAttribute('aria-label','Function of x and y');
+    const preset=make('select','field'); preset.id='zentrix3dPreset'; preset.setAttribute('aria-label','Choose a surface example');
+    [['Custom expression',''],['Paraboloid: x² + y²','x^2+y^2'],['Saddle: x² − y²','x^2-y^2'],['Ripple: sin(x) cos(y)','sin(x)*cos(y)'],['Gaussian hill','exp(-(x^2+y^2)/4)'],['Sinc surface','sin(sqrt(x^2+y^2))/sqrt(x^2+y^2)']].forEach(([label,value])=>{const o=make('option','',label);o.value=value;preset.append(o);});
+    preset.addEventListener('change',()=>{if(preset.value)expr.value=preset.value;});
+    const bounds=make('div','graph-controls');
+    const boundInput=(id,label,value)=>{const wrap=make('label','subtle',label);const input=make('input','field');input.type='number';input.step='any';input.value=String(value);input.id=id;input.setAttribute('aria-label',label);wrap.append(input);bounds.append(wrap);return input;};
+    const xmin=boundInput('zentrix3dXmin','X minimum',-5),xmax=boundInput('zentrix3dXmax','X maximum',5),ymin=boundInput('zentrix3dYmin','Y minimum',-5),ymax=boundInput('zentrix3dYmax','Y maximum',5);
     const plot=make('button','primary','Plot 3D surface ↗'); plot.type='button';
-    controls.append(expr,plot);
+    const actions=make('div','graph-controls');
+    const reset=make('button','softbtn','Reset view');reset.type='button';
+    const png=make('button','softbtn','Download PNG');png.type='button';png.disabled=true;
+    const csv=make('button','softbtn','Download CSV data');csv.type='button';csv.disabled=true;
+    actions.append(reset,png,csv);
+    controls.append(expr,preset,plot);
     const canvasWrap=make('div','graph-wrap'); canvasWrap.style.height='390px';
     const canvas=make('canvas',''); canvas.id='zentrix3dCanvas'; canvas.setAttribute('role','img'); canvas.setAttribute('aria-label','Interactive three dimensional mathematical surface'); canvas.style.width='100%';canvas.style.height='100%';canvas.style.touchAction='none';
     canvasWrap.append(canvas);
     const note=make('p','subtle','Plots are sampled locally by ZENTRIX. Drag the surface to rotate it. Undefined points and extreme values are clipped.');
     note.style.margin='10px 0 0';
-    panel.append(heading,controls,canvasWrap,note); page.append(panel);
+    panel.append(heading,controls,bounds,actions,canvasWrap,note); page.append(panel);
     let surface=null, yaw=-0.65, pitch=0.85, dragging=false, lastX=0,lastY=0, request=0;
+    const download=(blob,name)=>{const url=URL.createObjectURL(blob);const a=make('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+    reset.addEventListener('click',()=>{yaw=-0.65;pitch=0.85;draw();});
+    png.addEventListener('click',()=>{if(!surface)return;canvas.toBlob(blob=>{if(blob)download(blob,'zentrix-3d-surface.png');});});
+    csv.addEventListener('click',()=>{if(!surface)return;const rows=['x,y,z'];for(let i=0;i<surface.y.length;i++)for(let j=0;j<surface.x.length;j++){const z=surface.z[i][j];rows.push([surface.x[j],surface.y[i],z===null?'':z].join(','));}download(new Blob([rows.join('\\n')],{type:'text/csv;charset=utf-8'}),'zentrix-3d-surface.csv');});
     const draw=()=>{
       if(!surface)return;
       const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
@@ -107,9 +122,9 @@
     plot.addEventListener('click',async()=>{
       const id=++request;plot.disabled=true;plot.textContent='Sampling surface…';
       try{
-        const r=await fetch('/api/plot3d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expr:expr.value,xmin:-5,xmax:5,ymin:-5,ymax:5})});
+        const r=await fetch('/api/plot3d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expr:expr.value,xmin:Number(xmin.value),xmax:Number(xmax.value),ymin:Number(ymin.value),ymax:Number(ymax.value)})});
         const j=await r.json();if(!r.ok)throw new Error(j.detail||'Could not plot this surface.');
-        if(id!==request)return;surface=j;draw();notifyUser('3D surface generated.');
+        if(id!==request)return;surface=j;draw();png.disabled=false;csv.disabled=false;notifyUser('3D surface generated.');
       }catch(e){notifyUser(e.message);}
       finally{plot.disabled=false;plot.textContent='Plot 3D surface ↗';}
     });
