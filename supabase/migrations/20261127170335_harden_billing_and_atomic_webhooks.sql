@@ -3,7 +3,13 @@ revoke all on table public.zentrix_billing_events from anon, authenticated;
 grant select, insert, update on table public.zentrix_billing to service_role;
 grant select, insert, update on table public.zentrix_billing_events to service_role;
 
-revoke all on function public.rls_auto_enable() from public, anon, authenticated, service_role;
+do $block$
+begin
+  if to_regprocedure('public.rls_auto_enable()') is not null then
+    execute 'revoke all on function public.rls_auto_enable() from public, anon, authenticated, service_role';
+  end if;
+end;
+$block$;
 
 create or replace function public.zentrix_apply_billing_event(
   p_event_id text,
