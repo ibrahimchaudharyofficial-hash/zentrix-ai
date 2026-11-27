@@ -193,7 +193,7 @@
     auto.addEventListener('change',()=>{yMin.disabled=auto.checked;yMax.disabled=auto.checked;draw();});
     [yMin,yMax].forEach(input=>input.addEventListener('change',draw));
     png.addEventListener('click',()=>{if(data)canvas.toBlob(blob=>{if(blob)download(blob,'zentrix-2d-graph.png');});});
-    csv.addEventListener('click',()=>{if(!data)return;const rows=['x,y'];data.x.forEach((x,i)=>rows.push([x,data.y[i]===null?'':data.y[i]].join(',')));download(new Blob([rows.join('\\n')],{type:'text/csv;charset=utf-8'}),'zentrix-2d-graph.csv');});
+    csv.addEventListener('click',()=>{if(!data)return;const rows=['x,y'];data.x.forEach((x,i)=>rows.push([x,data.y[i]===null?'':data.y[i]].join(',')));download(new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'}),'zentrix-2d-graph.csv');});
     const oldButton=panel.querySelector('button[onclick*="plotFunction"]');
     if(oldButton){const button=oldButton.cloneNode(true);button.removeAttribute('onclick');button.addEventListener('click',plot);oldButton.replaceWith(button);}
     window.plotFunction=plot;
