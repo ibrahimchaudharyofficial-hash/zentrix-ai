@@ -20,6 +20,7 @@ def test_release_version_is_340():
 
 
 def test_gemini_vision_ocr_requires_a_saved_key(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     monkeypatch.delenv('GEMINI_API_KEY', raising=False)
     response = TestClient(main.app, base_url='http://127.0.0.1').post('/api/ocr/vision', json=_valid_png_payload())
     assert response.status_code == 400
@@ -27,12 +28,14 @@ def test_gemini_vision_ocr_requires_a_saved_key(monkeypatch):
 
 
 def test_gemini_vision_ocr_is_local_only(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     monkeypatch.setenv('GEMINI_API_KEY', 'x' * 30)
     response = TestClient(main.app, base_url='http://example.com').post('/api/ocr/vision', json=_valid_png_payload())
     assert response.status_code == 403
 
 
 def test_gemini_vision_ocr_sends_only_requested_image_and_returns_transcription(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     monkeypatch.setenv('GEMINI_API_KEY', 'x' * 30)
     monkeypatch.setenv('GEMINI_MODEL', 'gemini-test-model')
     payload = _valid_png_payload()
@@ -83,6 +86,7 @@ def test_ocr_frontend_has_cdn_fallback_retry_and_memory_bounds():
 
 
 def test_vision_route_rejects_fake_image_bytes(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     monkeypatch.setenv('GEMINI_API_KEY', 'x' * 30)
     response = TestClient(main.app, base_url='http://127.0.0.1').post(
         '/api/ocr/vision', json={'mime_type': 'image/png', 'image_base64': base64.b64encode(b'not-a-png-file').decode()}
