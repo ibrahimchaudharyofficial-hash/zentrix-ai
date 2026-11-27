@@ -16,7 +16,9 @@ def test_interface_theme_and_accessibility_upgrade_is_loaded():
     assert "focus-visible" in source
     assert "toggleTheme" in source
 
-\n\ndef test_navigation_refinement_is_loaded():
+
+
+def test_navigation_refinement_is_loaded():
     html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
     script_path = ROOT / "backend" / "static" / "zentrix-navigation.js"
     assert 'src="/zentrix-navigation.js"' in html
