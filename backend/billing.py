@@ -35,6 +35,7 @@ def _config():
         "anon": os.getenv("SUPABASE_ANON_KEY", ""),
         "service": os.getenv("SUPABASE_SERVICE_ROLE_KEY", ""),
         "paddle_key": os.getenv("PADDLE_API_KEY", ""),
+        "client_token": os.getenv("PADDLE_CLIENT_TOKEN", ""),
         "webhook_secret": os.getenv("PADDLE_WEBHOOK_SECRET_KEY", ""),
         "monthly": os.getenv("PADDLE_PRICE_ID_MONTHLY", ""),
         "lifetime": os.getenv("PADDLE_PRICE_ID_LIFETIME", ""),
@@ -47,7 +48,7 @@ def _config():
 def _billing_ready(cfg):
     return all((
         cfg["supabase_url"], cfg["anon"], cfg["service"], cfg["paddle_key"],
-        cfg["webhook_secret"], cfg["checkout_url"]
+        cfg["webhook_secret"], cfg["checkout_url"], cfg["client_token"]
     )) and cfg["environment"] in {"sandbox", "live"} and bool(cfg["monthly"]) and bool(cfg["lifetime"])
 
 
