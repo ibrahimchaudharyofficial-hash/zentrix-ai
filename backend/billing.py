@@ -48,7 +48,7 @@ def _billing_ready(cfg):
     return all((
         cfg["supabase_url"], cfg["anon"], cfg["service"], cfg["paddle_key"],
         cfg["webhook_secret"], cfg["checkout_url"]
-    )) and cfg["environment"] in {"sandbox", "live"}
+    )) and cfg["environment"] in {"sandbox", "live"} and bool(cfg["monthly"]) and bool(cfg["lifetime"])
 
 
 def _http_json(url, method="GET", headers=None, payload=None, timeout=12):
@@ -143,11 +143,25 @@ def billing_status(authorization: str | None = Header(default=None)):
     )
     row = rows[0] if isinstance(rows, list) and rows else None
     if not row:
-        return {"configured": _billing_ready(cfg), "plan": "free", "status": "inactive"}
+        return {"configured": _billing_ready(cfg), "plan": "free", "status": "inactive", "premium_active": False}
+    plan = row.get("plan", "free")
+    status = row.get("status", "inactive")
+    premium_active = plan == "lifetime" and status == "active"
+    if plan == "monthly" and status in {"active", "trialing"}:
+        premium_active = True
+        period_end = row.get("current_period_end")
+        if period_end:
+            try:
+                parsed_end = datetime.fromisoformat(period_end.replace("Z", "+00:00"))
+                if parsed_end.tzinfo is None or parsed_end <= datetime.now(parsed_end.tzinfo):
+                    premium_active = False
+            except (ValueError, TypeError):
+                premium_active = False
     return {
         "configured": _billing_ready(cfg),
-        "plan": row.get("plan", "free"),
-        "status": row.get("status", "inactive"),
+        "plan": plan,
+        "status": status,
+        "premium_active": premium_active,
         "current_period_end": row.get("current_period_end"),
     }
 
