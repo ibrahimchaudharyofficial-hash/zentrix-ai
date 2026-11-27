@@ -10,7 +10,7 @@ ZENTRIX AI is a free mathematics learning workspace designed to help students un
 - **Practise:** generate questions at different difficulty levels and check answers.
 - **Prepare:** use the Exam Centre to practise selected subjects and test lengths.
 - **Learn:** search the Definitions library for clear explanations and examples.
-- **Visualise:** explore functions with 2D graphs and interactive, draggable 3D surface plots.
+- **Visualise:** explore functions with 2D graphs and interactive, draggable 3D surface plots. Choose built-in surface examples, set custom x/y ranges, reset the camera, and export plotted surfaces as PNG images or CSV sample data.
 - **Explore:** use Matrix Lab for supported matrix operations.
 - **Read photos and PDFs:** use browser-based OCR for images or extract selectable text from PDF worksheets locally, review the transcription and send corrected text to the solver.
 
