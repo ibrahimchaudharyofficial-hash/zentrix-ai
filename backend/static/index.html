@@ -465,7 +465,7 @@ function renderBillingUI(){
   if(!status||!detail)return;
   if(!zentrixUser){
     status.textContent='Guest account · Free plan';
-    detail.textContent='Sign in or create an account to check Premium status and continue to checkout.';
+    detail.textContent=zentrixSupabase?'Sign in or create an account to check Premium status and continue to checkout.':'Account sign-in is not configured on this deployment yet; checkout is unavailable.';
   }else if(zentrixBilling.loading){
     status.textContent='Checking your plan…';detail.textContent='Your account is being checked securely.';
   }else if(zentrixBilling.error){
@@ -502,7 +502,8 @@ async function refreshBillingStatus(){
 }
 async function startBillingCheckout(plan){
   if(!['monthly','lifetime','donation'].includes(plan))return;
-  if(!zentrixUser||!zentrixSupabase){openAccountDialog();accountMessage('Sign in or create an account before continuing to checkout.');return;}
+  if(!zentrixSupabase){notify('Account sign-in is not configured on this deployment yet.');return;}
+  if(!zentrixUser){openAccountDialog();accountMessage('Sign in or create an account before continuing to checkout.');return;}
   if(!zentrixBilling.configured){notify('Premium checkout is not enabled yet.');return;}
   const button=$$('.billing-action').find(b=>b.getAttribute('onclick')===`startBillingCheckout('${plan}')`);
   if(button){button.disabled=true;button.textContent='Preparing secure checkout…';}
