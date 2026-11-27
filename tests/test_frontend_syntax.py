@@ -20,8 +20,12 @@ def test_inline_javascript_parses(relative_path):
         pytest.skip("Node.js is not installed in this test environment")
 
     html = (ROOT / relative_path).read_text(encoding="utf-8")
-    scripts = re.findall(r"<script\b[^>]*>([\s\S]*?)</script>", html, flags=re.I)
-    inline_scripts = [script for script in scripts if script.strip()]
+    scripts = re.findall(r"<script\b([^>]*)>([\s\S]*?)</script>", html, flags=re.I)
+    inline_scripts = [
+        script for attributes, script in scripts
+        if script.strip()
+        and not re.search(r'type=["\\'](?:application/ld\\+json|application/json)["\\']', attributes, flags=re.I)
+    ]
     assert inline_scripts, f"No inline JavaScript found in {relative_path}"
 
     for script in inline_scripts:
@@ -35,3 +39,12 @@ def test_inline_javascript_parses(relative_path):
                 check=False,
             )
         assert result.returncode == 0, result.stderr
+
+
+def test_zentrix_upgrade_javascript_parses():
+    node = shutil.which("node")
+    if not node:
+        pytest.skip("Node.js is not installed in this test environment")
+    script = ROOT / "backend" / "static" / "zentrix-upgrades.js"
+    result = subprocess.run([node, "--check", str(script)], capture_output=True, text=True, check=False)
+    assert result.returncode == 0, result.stderr
