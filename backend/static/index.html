@@ -404,14 +404,18 @@ body{background:radial-gradient(ellipse at 12% 0%,rgba(244,190,218,.20),transpar
 
 
   <section class="page" id="page-premium">
-    <div class="page-title"><div class="eyebrow">✦&nbsp; SUPPORT THE FUTURE OF MATHEMATICS</div><h1>Choose how you support ZENTRIX.</h1><p>Core mathematics tools will remain free. Premium options and voluntary support are being planned.</p></div>
+    <div class="page-title"><div class="eyebrow">✦&nbsp; SUPPORT THE FUTURE OF MATHEMATICS</div><h1>Choose how you support ZENTRIX.</h1><p>Core mathematics tools will remain free forever. Premium is optional.</p></div>
+    <div class="panel settings-card" style="margin:16px 0" aria-live="polite">
+      <div class="eyebrow">YOUR ACCOUNT</div><div id="billingAccountStatus" style="margin-top:7px;font-weight:650">Checking Premium status…</div>
+      <p id="billingAccountDetail" class="note" style="margin:5px 0 0">Sign in to view your plan and manage checkout.</p>
+    </div>
     <div class="arcade-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:18px 0">
       <article class="panel settings-card"><div class="eyebrow">ALWAYS FREE</div><h2 style="margin:13px 0 5px;font-size:21px">Free</h2><p>Essential mathematics access for every learner.</p><h3 style="font-size:26px;margin:15px 0">Rs. 0</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Core calculations and equation solving</li><li>Essential learning tools</li><li>Basic graphing and matrix tools</li></ul><span class="badge" style="display:inline-block;padding:6px 10px;border-radius:20px;background:var(--accent-soft);color:var(--accent)">Available now</span></article>
-      <article class="panel settings-card"><div class="eyebrow">RECURRING SUPPORT</div><h2 style="margin:13px 0 5px;font-size:21px">Premium Monthly</h2><p>For learners who want expanded capabilities.</p><h3 style="font-size:26px;margin:15px 0">Price coming soon</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Planned advanced mathematics tools</li><li>More detailed solution explanations</li><li>Expanded history and productivity features</li></ul><button class="softbtn" type="button" disabled aria-disabled="true">Coming soon</button></article>
-      <article class="panel settings-card"><div class="eyebrow">ONE-TIME PURCHASE</div><h2 style="margin:13px 0 5px;font-size:21px">Premium Lifetime</h2><p>One payment for ongoing Premium access.</p><h3 style="font-size:26px;margin:15px 0">Price coming soon</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Planned Premium feature bundle</li><li>No recurring subscription</li><li>Future feature improvements, subject to published terms</li></ul><button class="softbtn" type="button" disabled aria-disabled="true">Coming soon</button></article>
+      <article class="panel settings-card"><div class="eyebrow">RECURRING SUPPORT</div><h2 style="margin:13px 0 5px;font-size:21px">Premium Monthly</h2><p>For learners who want expanded capabilities.</p><h3 style="font-size:21px;margin:15px 0">Price shown at checkout</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Planned advanced mathematics tools</li><li>More detailed solution explanations</li><li>Expanded history and productivity features</li></ul><button class="primary billing-action" type="button" onclick="startBillingCheckout('monthly')">Continue to secure checkout</button></article>
+      <article class="panel settings-card"><div class="eyebrow">ONE-TIME PURCHASE</div><h2 style="margin:13px 0 5px;font-size:21px">Premium Lifetime</h2><p>One payment for ongoing Premium access.</p><h3 style="font-size:21px;margin:15px 0">Price shown at checkout</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Planned Premium feature bundle</li><li>No recurring subscription</li><li>Future feature improvements, subject to published terms</li></ul><button class="primary billing-action" type="button" onclick="startBillingCheckout('lifetime')">Continue to secure checkout</button></article>
     </div>
-    <div class="panel settings-card" style="margin-top:15px"><div class="eyebrow">OPTIONAL · VOLUNTARY</div><h2 style="margin:12px 0 5px;font-size:20px">Support ZENTRIX AI</h2><p>Enjoying ZENTRIX? In the future, you'll be able to make a voluntary contribution to help support development. Donations will never be required to use the free mathematics tools.</p><button class="softbtn" type="button" disabled aria-disabled="true">Donation options coming soon</button></div>
-    <div class="settings-note" style="margin-top:15px"><strong>Transparent status:</strong> These plans are a preview only. No payments are currently accepted, no subscription is being created, and no Premium feature restrictions are active. Prices and included features will be confirmed before launch.</div>
+    <div class="panel settings-card" style="margin-top:15px"><div class="eyebrow">OPTIONAL · VOLUNTARY</div><h2 style="margin:12px 0 5px;font-size:20px">Support ZENTRIX AI</h2><p>Make a voluntary contribution to help support development. Donations never unlock paid features and are never required to use the free mathematics tools.</p><button class="softbtn billing-action" type="button" onclick="startBillingCheckout('donation')">Make a voluntary contribution</button></div>
+    <div class="settings-note" style="margin-top:15px"><strong>Transparent status:</strong> Core mathematics remains free. Premium checkout will only become available after the owner configures and tests the payment provider. Premium benefits and final prices will be published before any live charge.</div>
   </section>
 
   <section class="page" id="page-settings">
@@ -454,7 +458,70 @@ function updateAccountUI(){const b=$('#accountButton');if(!b)return;if(zentrixUs
 async function accountSignIn(){if(!zentrixSupabase){accountMessage('Account service is not configured yet. You can continue as a guest.',true);return;}const email=$('#accountEmail').value.trim(),password=$('#accountPassword').value;if(!email||!password){accountMessage('Enter your email and password.',true);return;}accountMessage('Signing in…');const {data,error}=await zentrixSupabase.auth.signInWithPassword({email,password});if(error){accountMessage(error.message,true);return;}zentrixUser=data.user;try{await loadAccountData();updateAccountUI();accountMessage('Signed in. Your learning data is synced.');closeAccountDialog();notify('Account synced successfully.');}catch(e){accountMessage('Signed in, but cloud sync failed: '+e.message,true);}}
 async function accountSignUp(){if(!zentrixSupabase){accountMessage('Account service is not configured yet. You can continue as a guest.',true);return;}const email=$('#accountEmail').value.trim(),password=$('#accountPassword').value;if(!email||password.length<8){accountMessage('Enter a valid email and a password with at least 8 characters.',true);return;}accountMessage('Creating your account…');const {data,error}=await zentrixSupabase.auth.signUp({email,password});if(error){accountMessage(error.message,true);return;}if(data.session){zentrixUser=data.user;try{await loadAccountData();updateAccountUI();closeAccountDialog();notify('Account created and progress synced.');}catch(e){accountMessage('Account created, but sync failed: '+e.message,true);}}else accountMessage('Check your email to confirm your account, then sign in.');}
 async function accountSignOut(){if(!zentrixSupabase)return;try{await syncAccountData();await zentrixSupabase.auth.signOut();zentrixUser=null;updateAccountUI();accountMessage('Signed out. Guest mode remains available; this browser’s local history stays on this device.');}catch(e){accountMessage('Could not sign out cleanly: '+e.message,true);}}
-async function initialisePublicAccounts(){try{const response=await fetch('/api/public-config'),config=await response.json();if(!config.auth_enabled){accountMessage('Guest mode is available. Account sync will activate after the site owner configures Supabase.');return;}if(!window.supabase?.createClient){accountMessage('Account library could not load. Guest mode still works.',true);return;}zentrixSupabase=window.supabase.createClient(config.supabase_url,config.supabase_anon_key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await zentrixSupabase.auth.getSession();zentrixUser=data.session?.user||null;if(zentrixUser){try{await loadAccountData();}catch(e){accountMessage('Account signed in; sync will retry: '+e.message,true);}}zentrixSupabase.auth.onAuthStateChange((_event,session)=>{zentrixUser=session?.user||null;updateAccountUI();});updateAccountUI();if(zentrixSyncTimer)clearInterval(zentrixSyncTimer);zentrixSyncTimer=setInterval(()=>{if(zentrixUser)syncAccountData().catch(()=>{});},30000);window.addEventListener('pagehide',()=>{if(zentrixUser)syncAccountData().catch(()=>{});});}catch(e){accountMessage('Guest mode is ready. Account service is temporarily unavailable.',true);} }
+
+let zentrixBilling={configured:false,plan:"free",status:"inactive",premium_active:false,loading:false,error:null};
+function renderBillingUI(){
+  const status=$('#billingAccountStatus'),detail=$('#billingAccountDetail');
+  if(!status||!detail)return;
+  if(!zentrixUser){
+    status.textContent='Guest account · Free plan';
+    detail.textContent='Sign in or create an account to check Premium status and continue to checkout.';
+  }else if(zentrixBilling.loading){
+    status.textContent='Checking your plan…';detail.textContent='Your account is being checked securely.';
+  }else if(zentrixBilling.error){
+    status.textContent='Premium status unavailable';detail.textContent=zentrixBilling.error;
+  }else if(zentrixBilling.premium_active){
+    status.textContent=zentrixBilling.plan==='lifetime'?'Premium Lifetime is active':'Premium Monthly is active';
+    detail.textContent=zentrixBilling.current_period_end?'Current period ends '+new Date(zentrixBilling.current_period_end).toLocaleDateString():'Your Premium entitlement is active.';
+  }else{
+    status.textContent='Free plan';
+    detail.textContent=zentrixBilling.configured?'Your account is ready. Choose an optional Premium plan or donation below.':'Checkout is not enabled yet. The owner must finish provider setup and sandbox testing.';
+  }
+  $$('.billing-action').forEach(button=>{
+    const plan=button.getAttribute('onclick')?.match(/'([^']+)'/)?.[1];
+    const isDonation=plan==='donation';
+    button.disabled=!!zentrixUser && (!zentrixBilling.configured || (isDonation && !zentrixBilling.donation_available));
+    if(zentrixBilling.premium_active && !isDonation)button.disabled=true;
+    button.title=button.disabled?'Checkout is not configured yet.':'';
+  });
+}
+async function refreshBillingStatus(){
+  if(!zentrixUser||!zentrixSupabase){zentrixBilling={configured:false,plan:'free',status:'inactive',premium_active:false,loading:false,error:null};renderBillingUI();return;}
+  zentrixBilling.loading=true;zentrixBilling.error=null;renderBillingUI();
+  try{
+    const {data,error}=await zentrixSupabase.auth.getSession();
+    if(error||!data.session?.access_token)throw new Error('Please sign in again to check your plan.');
+    const response=await fetch('/api/billing/status',{headers:{Authorization:'Bearer '+data.session.access_token},cache:'no-store'});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(result.detail||'Could not retrieve Premium status.');
+    zentrixBilling={...result,loading:false,error:null};
+  }catch(error){
+    zentrixBilling={configured:false,plan:'free',status:'inactive',premium_active:false,loading:false,error:error.message||'Premium status could not be checked.'};
+  }
+  renderBillingUI();
+}
+async function startBillingCheckout(plan){
+  if(!['monthly','lifetime','donation'].includes(plan))return;
+  if(!zentrixUser||!zentrixSupabase){openAccountDialog();accountMessage('Sign in or create an account before continuing to checkout.');return;}
+  if(!zentrixBilling.configured){notify('Premium checkout is not enabled yet.');return;}
+  const button=$$('.billing-action').find(b=>b.getAttribute('onclick')===`startBillingCheckout('${plan}')`);
+  if(button){button.disabled=true;button.textContent='Preparing secure checkout…';}
+  try{
+    const {data,error}=await zentrixSupabase.auth.getSession();
+    if(error||!data.session?.access_token)throw new Error('Your session expired. Please sign in again.');
+    const response=await fetch('/api/billing/checkout',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+data.session.access_token},body:JSON.stringify({plan})});
+    const result=await response.json().catch(()=>({}));
+    if(!response.ok)throw new Error(result.detail||'Checkout could not be created.');
+    if(typeof result.checkout_url!=='string'||!result.checkout_url.startsWith('https://'))throw new Error('The payment provider returned an invalid checkout link.');
+    window.location.assign(result.checkout_url);
+  }catch(error){
+    notify(error.message||'Checkout could not be started.');
+    await refreshBillingStatus();
+  }finally{
+    if(button&&!zentrixBilling.loading){button.textContent=plan==='donation'?'Make a voluntary contribution':'Continue to secure checkout';renderBillingUI();}
+  }
+}
+async function initialisePublicAccounts(){try{const response=await fetch('/api/public-config'),config=await response.json();if(!config.auth_enabled){accountMessage('Guest mode is available. Account sync will activate after the site owner configures Supabase.');return;}if(!window.supabase?.createClient){accountMessage('Account library could not load. Guest mode still works.',true);return;}zentrixSupabase=window.supabase.createClient(config.supabase_url,config.supabase_anon_key,{auth:{persistSession:true,autoRefreshToken:true,detectSessionInUrl:true}});const {data}=await zentrixSupabase.auth.getSession();zentrixUser=data.session?.user||null;if(zentrixUser){try{await loadAccountData();}catch(e){accountMessage('Account signed in; sync will retry: '+e.message,true);}}zentrixSupabase.auth.onAuthStateChange((_event,session)=>{zentrixUser=session?.user||null;updateAccountUI();refreshBillingStatus().catch(()=>{});});updateAccountUI();refreshBillingStatus().catch(()=>{});if(zentrixSyncTimer)clearInterval(zentrixSyncTimer);zentrixSyncTimer=setInterval(()=>{if(zentrixUser)syncAccountData().catch(()=>{});},30000);window.addEventListener('pagehide',()=>{if(zentrixUser)syncAccountData().catch(()=>{});});}catch(e){accountMessage('Guest mode is ready. Account service is temporarily unavailable.',true);} }
 window.addEventListener('storage',()=>{if(zentrixUser)syncAccountData().catch(()=>{});});
 const USAGE_KEY='zentrix_active_usage_v1';
 const USAGE_IDLE_MS=75000,USAGE_GOAL_SECONDS=7200;
@@ -472,7 +539,7 @@ const examples=[['Definitions','Look up simple maths terms and examples','defini
 const getHistory=()=>{try{const saved=localStorage.getItem('zentrix_history');if(saved)return JSON.parse(saved);const legacy=JSON.parse(localStorage.getItem('zx')||'[]');return legacy.map(i=>({q:i.q,a:i.a,date:new Date().toISOString(),topic:'Mathematics'}))}catch{return[]}};
 function notify(message){const t=$('#toast');t.textContent=message;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
 
-function goPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));$$('.nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===name));$('#crumbTitle').textContent=({home:'Home',definitions:'Definitions',exam:'Exam centre',matrix:'Matrix Lab',graph:'Graphs',history:'Recent work',learn:'Learn & practise',arcade:'Math games',auditor:'Verify solutions',coach:'Fix mistakes',settings:'Settings',premium:'Premium & Support'})[name]||name;toggleMenu(false);if(name==='definitions')renderDefinitions();if(name==='exam')renderExamStats();if(name==='history')drawHistory();if(name==='learn'){renderFormulaLibrary();loadLearningProfile();}if(name==='arcade')loadArcadeStats();if(name==='settings'){loadGeminiStatus();loadAISettings();$('#aboutOptIn').checked=localStorage.getItem('zentrix_about_optin')==='1';toggleAbout(false)}if(name==='graph')setTimeout(plotFunction,80);window.scrollTo({top:0,behavior:'smooth'})}
+function goPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));$$('.nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===name));$('#crumbTitle').textContent=({home:'Home',definitions:'Definitions',exam:'Exam centre',matrix:'Matrix Lab',graph:'Graphs',history:'Recent work',learn:'Learn & practise',arcade:'Math games',auditor:'Verify solutions',coach:'Fix mistakes',settings:'Settings',premium:'Premium & Support'})[name]||name;toggleMenu(false);if(name==='definitions')renderDefinitions();if(name==='exam')renderExamStats();if(name==='history')drawHistory();if(name==='learn'){renderFormulaLibrary();loadLearningProfile();}if(name==='arcade')loadArcadeStats();if(name==='premium')refreshBillingStatus();if(name==='settings'){loadGeminiStatus();loadAISettings();$('#aboutOptIn').checked=localStorage.getItem('zentrix_about_optin')==='1';toggleAbout(false)}if(name==='graph')setTimeout(plotFunction,80);window.scrollTo({top:0,behavior:'smooth'})}
 $$('.nav button[data-page]').forEach(b=>b.addEventListener('click',()=>goPage(b.dataset.page)));
 function toggleMenu(force){const open=typeof force==='boolean'?force:!$('#sidebar').classList.contains('open');$('#sidebar').classList.toggle('open',open);$('#overlay').classList.toggle('open',open)}
 function toggleTheme(){const d=document.documentElement;d.dataset.theme=d.dataset.theme==='dark'?'light':'dark';localStorage.setItem('zentrix_theme',d.dataset.theme);if($('#page-graph').classList.contains('active'))plotFunction()}
