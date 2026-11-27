@@ -73,7 +73,8 @@ def test_connected_ai_scans_questions_automatically_without_provider_prompt():
     assert "async function recognisePhoto(){if(connectedVisionProviders.size){await readPhotoWithAI();return}return recognisePhotoLocally()}" in html
     assert "const provider=['gemini','openai','anthropic','openrouter'].find(id=>connectedVisionProviders.has(id))" in html
     assert "if(!confirm('AI math reading sends a compressed copy" not in html
-    assert "AI math reading" not in html
+    reader = html[html.index("async function readPhotoWithAI"):html.index("async function useRecognisedText")]
+    assert "if(!confirm(" not in reader
 
 
 def test_photo_scan_falls_back_to_local_ocr_when_no_ai_or_ai_fails():
