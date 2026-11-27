@@ -86,6 +86,7 @@ def test_billing_ready_rejects_unknown_environment():
         "anon": "anon",
         "service": "service",
         "paddle_key": "paddle",
+        "client_token": "test_" + "a" * 27,
         "webhook_secret": "secret",
         "monthly": "pri_12345678901234567890123456",
         "lifetime": "pri_12345678901234567890123456",
