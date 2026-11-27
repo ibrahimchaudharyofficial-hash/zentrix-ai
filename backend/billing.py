@@ -136,14 +136,14 @@ def billing_status(authorization: str | None = Header(default=None)):
     cfg = _config()
     user = _authenticated_user(cfg, authorization)
     if not cfg["service"]:
-        return {"configured": False, "plan": "free", "status": "inactive"}
+        return {"configured": False, "donation_available": False, "plan": "free", "status": "inactive", "premium_active": False}
     rows = _supabase_rest(
         cfg, "zentrix_billing",
         "select=plan,status,current_period_end&user_id=eq." + urllib.parse.quote(user["id"], safe=""),
     )
     row = rows[0] if isinstance(rows, list) and rows else None
     if not row:
-        return {"configured": _billing_ready(cfg), "plan": "free", "status": "inactive", "premium_active": False}
+        return {"configured": _billing_ready(cfg), "donation_available": bool(PRICE_ID_RE.fullmatch(cfg["donation"])), "plan": "free", "status": "inactive", "premium_active": False}
     plan = row.get("plan", "free")
     status = row.get("status", "inactive")
     premium_active = plan == "lifetime" and status == "active"
@@ -159,6 +159,7 @@ def billing_status(authorization: str | None = Header(default=None)):
                 premium_active = False
     return {
         "configured": _billing_ready(cfg),
+        "donation_available": bool(PRICE_ID_RE.fullmatch(cfg["donation"])),
         "plan": plan,
         "status": status,
         "premium_active": premium_active,
