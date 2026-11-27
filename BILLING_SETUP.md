@@ -20,24 +20,25 @@ The connected project already has the four billing migrations recorded under `su
 2. Create a ZENTRIX AI product and a monthly recurring price.
 3. Create a separate one-time lifetime price.
 4. Optionally create a fixed-amount one-time donation price. Variable-amount donations need a separate reviewed checkout flow.
-5. Set up a checkout URL on the deployed ZENTRIX domain and have Paddle approve that domain.
+5. Use the checkout page already included in this app: `https://zentrix-ai-a60b5.containers.snapdeploy.app/checkout.html` (or the exact final SnapDeploy domain if it changes). This page loads Paddle.js and opens the transaction passed in the `_ptxn` URL parameter. Have Paddle approve the deployed domain for live checkout.
 6. Create a notification destination pointing to `https://YOUR-APP-DOMAIN/api/billing/webhook`.
 7. Subscribe to `subscription.created`, `subscription.updated`, `subscription.activated`, `subscription.trialing`, `subscription.past_due`, `subscription.canceled`, `subscription.paused`, `subscription.resumed`, and `transaction.completed`.
 8. Copy the notification destination's endpoint secret. Keep it private.
 
 ## 3. Backend environment variables
 
-Set these in the actual backend host's secret/environment settings, not in GitHub, frontend JavaScript, or a committed .env:
+Set these in the actual SnapDeploy backend's environment settings (port 8000), not in GitHub or a committed .env. Keep every secret server-side. The client-side token is the only Paddle credential intentionally exposed to the browser:
 
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` — server only
 - `PADDLE_API_KEY` — server only
+- `PADDLE_CLIENT_TOKEN` — browser-safe token beginning `test_` in sandbox or `live_` in production; the app exposes only this restricted client token through its public configuration endpoint
 - `PADDLE_WEBHOOK_SECRET_KEY` — server only
 - `PADDLE_PRICE_ID_MONTHLY` — Paddle price ID beginning `pri_`
 - `PADDLE_PRICE_ID_LIFETIME` — Paddle price ID beginning `pri_`
 - `PADDLE_PRICE_ID_DONATION` — optional fixed donation price ID beginning `pri_`
-- `PADDLE_CHECKOUT_URL` — HTTPS checkout page on the Paddle-approved domain
+- `PADDLE_CHECKOUT_URL=https://zentrix-ai-a60b5.containers.snapdeploy.app/checkout.html` — HTTPS checkout page on the Paddle-approved domain
 - `PADDLE_ENVIRONMENT=sandbox` while testing; use `live` only after successful sandbox tests and approval
 
 ## 4. API behaviour
