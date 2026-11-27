@@ -36,6 +36,20 @@ def test_3d_surface_rejects_invalid_ranges_and_unknown_variables():
     assert unknown.status_code == 400
 
 
+
+def test_3d_surface_respects_custom_ranges():
+    response = client.post("/api/plot3d", json={
+        "expr": "x+y", "xmin": -2, "xmax": 2, "ymin": -3, "ymax": 3
+    })
+    assert response.status_code == 200
+    result = response.json()
+    assert result["x"][0] == -2
+    assert result["x"][-1] == 2
+    assert result["y"][0] == -3
+    assert result["y"][-1] == 3
+    assert result["z"][0][0] == -5
+    assert result["z"][-1][-1] == 5
+
 def test_pdf_import_pwa_and_3d_frontend_are_wired():
     html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
     script = (ROOT / "backend" / "static" / "zentrix-upgrades.js").read_text(encoding="utf-8")
@@ -45,6 +59,11 @@ def test_pdf_import_pwa_and_3d_frontend_are_wired():
     assert "pdfjsLib" in script
     assert "install3DGraph" in script
     assert "/api/plot3d" in script
+    assert "zentrix3dPreset" in script
+    assert "Download PNG" in script
+    assert "Download CSV data" in script
+    assert "zentrix3dXmin" in script
+    assert "Reset view" in script
     assert "registerOfflineShell" in script
     assert (ROOT / "backend" / "static" / "sw.js").exists()
     assert (ROOT / "backend" / "static" / "manifest.webmanifest").exists()
