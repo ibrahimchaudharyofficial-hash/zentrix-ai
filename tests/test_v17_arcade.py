@@ -1,7 +1,8 @@
 from fastapi.testclient import TestClient
 import main
 
-def test_arcade_stats_and_attempt_persistence():
+def test_arcade_stats_and_attempt_persistence(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     client = TestClient(main.app)
     before = client.get('/api/arcade/stats').json()
     response = client.post('/api/arcade/attempt', json={
