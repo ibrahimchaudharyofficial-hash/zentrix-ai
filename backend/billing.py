@@ -46,10 +46,15 @@ def _config():
 
 
 def _billing_ready(cfg):
+    token_ok = bool(re.fullmatch(r"(test|live)_[A-Za-z0-9]{27}", cfg["client_token"]))
+    token_matches_environment = (
+        cfg["client_token"].startswith("test_") if cfg["environment"] == "sandbox"
+        else cfg["client_token"].startswith("live_")
+    )
     return all((
         cfg["supabase_url"], cfg["anon"], cfg["service"], cfg["paddle_key"],
-        cfg["webhook_secret"], cfg["checkout_url"], cfg["client_token"]
-    )) and cfg["environment"] in {"sandbox", "live"} and bool(cfg["monthly"]) and bool(cfg["lifetime"])
+        cfg["webhook_secret"], cfg["checkout_url"], cfg["monthly"], cfg["lifetime"]
+    )) and cfg["environment"] in {"sandbox", "live"} and token_ok and token_matches_environment
 
 
 def _http_json(url, method="GET", headers=None, payload=None, timeout=12):
