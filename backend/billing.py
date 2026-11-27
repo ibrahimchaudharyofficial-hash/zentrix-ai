@@ -1,7 +1,7 @@
 """Secure, provider-backed billing endpoints for ZENTRIX AI.
 
-All payment secrets stay server-side. Entitlements are written only after a
-verified Paddle webhook. The module is inert until its environment is configured.
+Payment secrets stay server-side. Entitlements are written only after a
+verified Paddle webhook and an atomic, idempotent database operation.
 """
 import hashlib
 import hmac
@@ -12,13 +12,21 @@ import time
 import urllib.error
 import urllib.parse
 import urllib.request
-from datetime import datetime, timezone
+from datetime import datetime
 
 from fastapi import APIRouter, Header, HTTPException, Request
 from pydantic import BaseModel, Field
 
 router = APIRouter(prefix="/api/billing", tags=["billing"])
 MAX_WEBHOOK_BYTES = 256_000
+USER_ID_RE = re.compile(
+    r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-"
+    r"[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+)
+PRICE_ID_RE = re.compile(r"^pri_[a-z0-9]{26}$")
+ALLOWED_SUBSCRIPTION_STATUSES = {
+    "active", "trialing", "past_due", "paused", "canceled", "inactive"
+}
 
 
 def _config():
@@ -32,13 +40,15 @@ def _config():
         "lifetime": os.getenv("PADDLE_PRICE_ID_LIFETIME", ""),
         "donation": os.getenv("PADDLE_PRICE_ID_DONATION", ""),
         "checkout_url": os.getenv("PADDLE_CHECKOUT_URL", ""),
-        "environment": os.getenv("PADDLE_ENVIRONMENT", "sandbox").lower(),
+        "environment": os.getenv("PADDLE_ENVIRONMENT", "sandbox").strip().lower(),
     }
 
 
 def _billing_ready(cfg):
-    return all((cfg["supabase_url"], cfg["service"], cfg["paddle_key"],
-                cfg["webhook_secret"], cfg["checkout_url"]))
+    return all((
+        cfg["supabase_url"], cfg["anon"], cfg["service"], cfg["paddle_key"],
+        cfg["webhook_secret"], cfg["checkout_url"]
+    )) and cfg["environment"] in {"sandbox", "live"}
 
 
 def _http_json(url, method="GET", headers=None, payload=None, timeout=12):
@@ -51,8 +61,8 @@ def _http_json(url, method="GET", headers=None, payload=None, timeout=12):
                 raise HTTPException(502, "Billing provider returned an oversized response.")
             return json.loads(raw.decode("utf-8")) if raw else {}
     except urllib.error.HTTPError as exc:
-        detail = exc.read(2048).decode("utf-8", "replace")
-        raise HTTPException(502, "Billing service request failed: " + detail[:500])
+        # Provider error bodies may contain customer/provider details; do not echo them.
+        raise HTTPException(502, "Billing service rejected the request (HTTP %s)." % exc.code)
     except urllib.error.URLError:
         raise HTTPException(503, "Billing service is temporarily unavailable.")
     except (ValueError, UnicodeDecodeError):
@@ -77,6 +87,28 @@ def _supabase_rest(cfg, table, query="", method="GET", payload=None, prefer=None
     return _http_json(url, method, _service_headers(cfg, prefer), payload)
 
 
+def _apply_billing_event(cfg, event_id, event_type, occurred_at, user_id=None,
+                         plan=None, status=None, subscription_id=None,
+                         customer_id=None, current_period_end=None):
+    """Record the event and, if applicable, update entitlement in one DB transaction."""
+    return _http_json(
+        cfg["supabase_url"] + "/rest/v1/rpc/zentrix_apply_billing_event",
+        method="POST",
+        headers=_service_headers(cfg),
+        payload={
+            "p_event_id": event_id,
+            "p_event_type": event_type,
+            "p_occurred_at": occurred_at,
+            "p_user_id": user_id,
+            "p_plan": plan,
+            "p_status": status,
+            "p_subscription_id": subscription_id,
+            "p_customer_id": customer_id,
+            "p_current_period_end": current_period_end,
+        },
+    )
+
+
 def _authenticated_user(cfg, authorization):
     if not cfg["supabase_url"] or not cfg["anon"]:
         raise HTTPException(503, "Account authentication is not configured.")
@@ -90,10 +122,7 @@ def _authenticated_user(cfg, authorization):
         headers={"apikey": cfg["anon"], "Authorization": "Bearer " + token},
     )
     user_id = user.get("id")
-    if not isinstance(user_id, str) or not re.fullmatch(
-        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}",
-        user_id,
-    ):
+    if not isinstance(user_id, str) or not USER_ID_RE.fullmatch(user_id):
         raise HTTPException(401, "Could not verify your account.")
     return user
 
@@ -129,11 +158,17 @@ def create_checkout(body: CheckoutRequest, authorization: str | None = Header(de
     user = _authenticated_user(cfg, authorization)
     if not _billing_ready(cfg):
         raise HTTPException(503, "Payments are not enabled yet. The site owner must finish Paddle and Supabase setup.")
-    price_id = {"monthly": cfg["monthly"], "lifetime": cfg["lifetime"], "donation": cfg["donation"]}[body.plan]
-    if not re.fullmatch(r"pri_[a-z0-9]{26}", price_id):
+
+    price_id = {
+        "monthly": cfg["monthly"],
+        "lifetime": cfg["lifetime"],
+        "donation": cfg["donation"],
+    }[body.plan]
+    if not PRICE_ID_RE.fullmatch(price_id):
         raise HTTPException(503, "This checkout option is not configured yet.")
     if not cfg["checkout_url"].startswith("https://"):
         raise HTTPException(503, "The approved secure checkout URL is not configured.")
+
     base = "https://api.paddle.com" if cfg["environment"] == "live" else "https://sandbox-api.paddle.com"
     result = _http_json(
         base + "/transactions",
@@ -164,6 +199,7 @@ def _verify_paddle_signature(raw_body, signature_header, secret):
     if not timestamps or not signatures or not timestamps[0].isdigit():
         return False
     timestamp = int(timestamps[0])
+    # Paddle's SDK default replay-protection tolerance is five seconds.
     if abs(time.time() - timestamp) > 5:
         return False
     signed = str(timestamp).encode() + b":" + raw_body
@@ -171,89 +207,119 @@ def _verify_paddle_signature(raw_body, signature_header, secret):
     return any(hmac.compare_digest(expected, candidate) for candidate in signatures)
 
 
-def _write_entitlement(cfg, user_id, plan, status, subscription_id=None,
-                      customer_id=None, current_period_end=None):
-    payload = {
-        "user_id": user_id,
-        "plan": plan,
-        "status": status,
-        "paddle_subscription_id": subscription_id,
-        "paddle_customer_id": customer_id,
-        "current_period_end": current_period_end,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
-    }
-    _supabase_rest(cfg, "zentrix_billing", "on_conflict=user_id", "POST",
-                   payload, "resolution=merge-duplicates,return=minimal")
+def _price_ids(data):
+    found = []
+    for item in data.get("items") or []:
+        if not isinstance(item, dict):
+            continue
+        price = item.get("price") or {}
+        if isinstance(price, dict):
+            price_id = price.get("id")
+        else:
+            price_id = None
+        price_id = price_id or item.get("price_id")
+        if isinstance(price_id, str):
+            found.append(price_id)
+    return found
+
+
+def _parse_occurred_at(value):
+    if not isinstance(value, str) or not value:
+        raise HTTPException(400, "Paddle event is missing its occurrence timestamp.")
+    try:
+        parsed = datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if parsed.tzinfo is None:
+            raise ValueError("timezone required")
+        return parsed.isoformat()
+    except ValueError:
+        raise HTTPException(400, "Paddle event has an invalid occurrence timestamp.")
 
 
 @router.post("/webhook")
-async def paddle_webhook(request: Request, paddle_signature: str | None = Header(default=None, alias="Paddle-Signature")):
+async def paddle_webhook(
+    request: Request,
+    paddle_signature: str | None = Header(default=None, alias="Paddle-Signature"),
+):
     cfg = _config()
     if not cfg["webhook_secret"] or not cfg["service"] or not cfg["supabase_url"]:
         raise HTTPException(503, "Billing webhook is not configured.")
+
     raw = await request.body()
     if len(raw) > MAX_WEBHOOK_BYTES:
         raise HTTPException(413, "Webhook payload is too large.")
     if not _verify_paddle_signature(raw, paddle_signature, cfg["webhook_secret"]):
         raise HTTPException(401, "Invalid or expired Paddle signature.")
+
     try:
         event = json.loads(raw.decode("utf-8"))
     except (ValueError, UnicodeDecodeError):
         raise HTTPException(400, "Invalid webhook JSON.")
+    if not isinstance(event, dict):
+        raise HTTPException(400, "Malformed Paddle event.")
+
     event_id = event.get("event_id")
     event_type = event.get("event_type")
     data = event.get("data") or {}
-    if not isinstance(event_id, str) or not isinstance(event_type, str) or not isinstance(data, dict):
+    if (not isinstance(event_id, str) or not event_id.startswith("evt_")
+            or len(event_id) > 255 or not isinstance(event_type, str)
+            or len(event_type) > 120 or not isinstance(data, dict)):
         raise HTTPException(400, "Malformed Paddle event.")
-    # Idempotency: ignore event IDs already recorded after a successful update.
-    prior = _supabase_rest(cfg, "zentrix_billing_events",
-                           "select=event_id&event_id=eq." + urllib.parse.quote(event_id, safe=""))
-    if isinstance(prior, list) and prior:
-        return {"received": True, "duplicate": True}
+    occurred_at = _parse_occurred_at(event.get("occurred_at"))
 
     custom = data.get("custom_data") or {}
+    if not isinstance(custom, dict):
+        custom = {}
     user_id = custom.get("zentrix_user_id")
+    if not isinstance(user_id, str) or not USER_ID_RE.fullmatch(user_id):
+        user_id = None
     plan = custom.get("zentrix_plan")
-    if not isinstance(user_id, str) or not re.fullmatch(
-        r"[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}", user_id
-    ):
-        # Events unrelated to a ZENTRIX checkout are acknowledged but never grant access.
-        _supabase_rest(cfg, "zentrix_billing_events", "", "POST",
-                       {"event_id": event_id, "event_type": event_type},
-                       "resolution=ignore-duplicates,return=minimal")
-        return {"received": True, "ignored": True}
 
-    subscription_id = data.get("id") if event_type.startswith("subscription.") else data.get("subscription_id")
-    customer_id = data.get("customer_id")
-    period = data.get("current_billing_period") or {}
-    period_end = period.get("ends_at") if isinstance(period, dict) else None
+    entitlement = {
+        "user_id": None,
+        "plan": None,
+        "status": None,
+        "subscription_id": None,
+        "customer_id": data.get("customer_id") if isinstance(data.get("customer_id"), str) else None,
+        "period_end": None,
+    }
 
-    if event_type in {"subscription.created", "subscription.updated", "subscription.canceled", "subscription.paused", "subscription.resumed"}:
-        if plan != "monthly":
-            # For older Paddle records, infer monthly only from the configured price ID.
-            item_ids = []
-            for item in data.get("items", []):
-                price = item.get("price") or {}
-                item_ids.append(price.get("id") or item.get("price_id"))
-            if cfg["monthly"] not in item_ids:
-                return {"received": True, "ignored": True}
-            plan = "monthly"
-        status = data.get("status", "inactive")
-        if event_type == "subscription.canceled":
-            status = "canceled"
-        _write_entitlement(cfg, user_id, "monthly", status, subscription_id, customer_id, period_end)
+    if event_type in {
+        "subscription.created", "subscription.updated", "subscription.canceled",
+        "subscription.paused", "subscription.resumed"
+    }:
+        # A subscription is eligible only when its actual item matches our
+        # configured monthly price. Never trust custom_data alone for access.
+        if user_id and cfg["monthly"] and cfg["monthly"] in _price_ids(data):
+            raw_status = data.get("status")
+            status = raw_status if raw_status in ALLOWED_SUBSCRIPTION_STATUSES else "inactive"
+            if event_type == "subscription.canceled":
+                status = "canceled"
+            elif event_type == "subscription.paused":
+                status = "paused"
+            period = data.get("current_billing_period") or {}
+            period_end = period.get("ends_at") if isinstance(period, dict) else None
+            entitlement.update({
+                "user_id": user_id,
+                "plan": "monthly",
+                "status": status,
+                "subscription_id": data.get("id") if isinstance(data.get("id"), str) else None,
+                "period_end": period_end,
+            })
 
     elif event_type == "transaction.completed":
-        items = data.get("items") or []
-        item_ids = []
-        for item in items:
-            price = item.get("price") or {}
-            item_ids.append(price.get("id") or item.get("price_id"))
-        if plan == "lifetime" and cfg["lifetime"] in item_ids:
-            _write_entitlement(cfg, user_id, "lifetime", "active", None, customer_id, None)
-        # Donation transactions intentionally never change plan access.
+        # Only a completed transaction containing our configured lifetime
+        # price grants lifetime. Donation transactions never grant Premium.
+        if user_id and plan == "lifetime" and cfg["lifetime"] and cfg["lifetime"] in _price_ids(data):
+            entitlement.update({
+                "user_id": user_id,
+                "plan": "lifetime",
+                "status": "active",
+                "subscription_id": None,
+            })
 
-    _supabase_rest(cfg, "zentrix_billing_events", "", "POST",
-                   {"event_id": event_id, "event_type": event_type},
-                   "resolution=ignore-duplicates,return=minimal")
-    return {"received": True}
+    applied = _apply_billing_event(
+        cfg, event_id, event_type, occurred_at,
+        entitlement["user_id"], entitlement["plan"], entitlement["status"],
+        entitlement["subscription_id"], entitlement["customer_id"], entitlement["period_end"],
+    )
+    return {"received": True, "processed": bool(applied), "duplicate": not bool(applied)}
