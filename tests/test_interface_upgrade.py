@@ -40,3 +40,18 @@ def test_navigation_refinement_supports_responsive_sidebar():
     assert "min-width:721px" in js
     assert "max-width:720px" in js
     assert "window.addEventListener('resize'" in js
+
+
+def test_command_palette_upgrade_is_loaded():
+    html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
+    script_path = ROOT / "backend" / "static" / "zentrix-command.js"
+    assert 'src="/zentrix-command.js"' in html
+    assert script_path.exists()
+
+
+def test_command_palette_supports_keyboard_navigation_and_actions():
+    js = (ROOT / "backend" / "static" / "zentrix-command.js").read_text(encoding="utf-8")
+    for feature in ("ArrowDown", "ArrowUp", "aria-activedescendant", "aria-selected",
+                    "Focus solver", "Solve current question", "Toggle fullscreen",
+                    "Toggle compact sidebar", "No matching commands"):
+        assert feature in js
