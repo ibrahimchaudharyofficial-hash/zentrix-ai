@@ -46,6 +46,8 @@ def public_config():
         "supabase_url": os.getenv("SUPABASE_URL", "").rstrip("/"),
         "supabase_anon_key": os.getenv("SUPABASE_ANON_KEY", ""),
         "auth_enabled": bool(os.getenv("SUPABASE_URL") and os.getenv("SUPABASE_ANON_KEY")),
+        "paddle_client_token": os.getenv("PADDLE_CLIENT_TOKEN", ""),
+        "paddle_environment": "sandbox" if os.getenv("PADDLE_ENVIRONMENT", "sandbox").strip().lower() == "sandbox" else "production",
     }
 
 
