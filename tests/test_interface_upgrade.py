@@ -66,3 +66,18 @@ def test_adaptive_study_coach_is_installed_and_private():
         assert feature in script
     assert "zentrix_progress_v1" in script
     assert "GEMINI_API_KEY" not in script[script.index("function installProgressDashboard"):script.index("function installUpgradeStyles")]
+
+
+def test_connected_ai_scans_questions_automatically_without_provider_prompt():
+    html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "async function recognisePhoto(){if(connectedVisionProviders.size){await readPhotoWithAI();return}return recognisePhotoLocally()}" in html
+    assert "const provider=['gemini','openai','anthropic','openrouter'].find(id=>connectedVisionProviders.has(id))" in html
+    assert "if(!confirm('AI math reading sends a compressed copy" not in html
+    assert "AI math reading" not in html
+
+
+def test_photo_scan_falls_back_to_local_ocr_when_no_ai_or_ai_fails():
+    html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "async function recognisePhotoLocally()" in html
+    assert "No AI provider connected: scanning uses local OCR." in html
+    assert "await recognisePhotoLocally()" in html
