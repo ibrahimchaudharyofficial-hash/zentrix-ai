@@ -43,7 +43,7 @@ Set these in the backend host's secret/environment settings (not in GitHub, fron
 
 - \`GET /api/billing/status\` requires a valid Supabase access token.
 - \`POST /api/billing/checkout\` requires a signed-in account and accepts \`monthly\`, \`lifetime\`, or \`donation\`.
-- \`POST /api/billing/webhook\` accepts only Paddle requests with a valid timestamped HMAC-SHA256 signature.
+- \`POST /api/billing/webhook\` accepts only Paddle requests with a valid timestamped HMAC-SHA256 signature with a five-second freshness window.
 - Monthly/lifetime access is written to Supabase only from verified provider events. Donation events never grant Premium.
 - The browser cannot write to billing tables. The backend checks the user's Supabase session with Supabase Auth before creating a checkout.
 
