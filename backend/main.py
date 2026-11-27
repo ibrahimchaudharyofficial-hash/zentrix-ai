@@ -40,7 +40,7 @@ def _public_mode() -> bool:
 
 @app.get("/api/public-config")
 def public_config():
-    """Only public Supabase project URL and anon key are exposed to the browser."""
+    """Expose only browser-safe Supabase and Paddle client configuration; never server secrets."""
     return {
         "public_mode": _public_mode(),
         "supabase_url": os.getenv("SUPABASE_URL", "").rstrip("/"),
