@@ -725,6 +725,7 @@ async function answerArcade(v,btn){if(arcadeLocked)return;clearInterval(arcadeCl
 function nextArcadeQuestion(){clearInterval(arcadeClock);if(arcadeIndex>=arcadeQuestions.length-1){$('#arcadeQuestion').textContent=`Challenge complete! You scored ${arcadeScore} / ${arcadeQuestions.length}.`;$('#arcadeOptions').replaceChildren();$('#arcadeFeedback').textContent=arcadeScore===arcadeQuestions.length?'Perfect round! Excellent work.':'Review the explanations and play again to improve.';$('#arcadeNext').textContent='Play again';$('#arcadeNext').disabled=false;$('#arcadeNext').onclick=()=>startArcade();return}arcadeIndex++;renderArcadeQ()}
 async function loadArcadeStats(){try{const rows=JSON.parse(localStorage.getItem('zentrix_arcade_attempts')||'[]'),attempts=rows.length,correct=rows.filter(x=>x.correct).length;$('#arcadeAttempts').textContent=attempts;$('#arcadeCorrect').textContent=correct;$('#arcadeAccuracy').textContent=(attempts?Math.round(correct*100/attempts):0)+'%'}catch{}}
 
+renderBillingUI();
 initialisePublicAccounts();
 startUsageTracking();
 </script>
