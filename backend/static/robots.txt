@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /api/
+Sitemap: https://zentrix-ai-a60b5.containers.snapdeploy.app/sitemap.xml
