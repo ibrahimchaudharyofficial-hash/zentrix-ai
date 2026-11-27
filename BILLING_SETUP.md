@@ -11,7 +11,7 @@ The integration is built for Paddle Billing. Paddle's published seller-country p
 1. Open the Supabase SQL Editor.
 2. Run \`supabase_schema.sql\` if the existing user-data table has not already been created.
 3. Run \`billing_schema.sql\`.
-4. Keep the billing tables without browser-facing RLS policies. The backend service-role key is the only intended writer/reader for billing entitlements.
+4. The billing schema enables RLS, removes all anon and authenticated table privileges, and grants the backend service_role access only. Do not add browser-facing policies or expose the service-role key.
 
 ## 2. Paddle dashboard
 
@@ -51,4 +51,4 @@ Set these in the backend host's secret/environment settings (not in GitHub, fron
 
 Test all cases in Paddle sandbox: successful monthly payment, renewal, failed payment, cancellation, lifetime purchase, donation, duplicate webhook, invalid signature, expired signature, signed-out checkout, and another user's token. Confirm that canceled/past-due subscriptions do not retain active access. Publish clear prices, renewal/cancellation/refund terms, privacy policy, and support contact before enabling live checkout.
 
-The current UI remains "Coming soon"; this commit does not activate payments or grant access without provider configuration.
+The database migrations applied to the connected Supabase project are tracked under `supabase/migrations/`. The current UI remains "Coming soon"; checkout buttons, feature gating, Paddle credentials, sandbox delivery tests, and deployment verification are still pending. No payments are enabled by this work.
