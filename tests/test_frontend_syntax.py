@@ -20,7 +20,7 @@ def test_inline_javascript_parses(relative_path):
         pytest.skip("Node.js is not installed in this test environment")
 
     html = (ROOT / relative_path).read_text(encoding="utf-8")
-    scripts = re.findall(r"<script\\b[^>]*>([\\s\\S]*?)</script>", html, flags=re.I)
+    scripts = re.findall(r"<script\b[^>]*>([\s\S]*?)</script>", html, flags=re.I)
     inline_scripts = [script for script in scripts if script.strip()]
     assert inline_scripts, f"No inline JavaScript found in {relative_path}"
 
