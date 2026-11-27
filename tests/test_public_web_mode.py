@@ -12,6 +12,8 @@ def test_public_config_exposes_only_public_supabase_values(monkeypatch):
         'supabase_url': 'https://example.supabase.co',
         'supabase_anon_key': 'public-anon-placeholder',
         'auth_enabled': True,
+        'paddle_client_token': '',
+        'paddle_environment': 'sandbox',
     }
     assert 'service_role' not in str(result).lower()
 
