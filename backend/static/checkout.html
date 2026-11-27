@@ -32,6 +32,7 @@
         status.textContent='No valid checkout transaction was found. Return to ZENTRIX and start again.';
         return;
       }
+      let paymentCompleted=false;
       try{
         const response=await fetch('/api/public-config',{cache:'no-store'});
         const config=await response.json();
@@ -49,9 +50,10 @@
           token,
           eventCallback:function(event){
             if(event&&event.name==='checkout.completed'){
-              status.textContent='Payment completed. Your Premium access will activate after the verified payment notification is processed.';
+              paymentCompleted=true;
+              status.textContent='Payment completed. Your Premium access will activate after the verified payment notification is processed. Return to ZENTRIX AI to refresh your plan.';
             }
-            if(event&&event.name==='checkout.closed'){
+            if(event&&event.name==='checkout.closed'&&!paymentCompleted){
               status.textContent='Checkout closed. You can return to ZENTRIX AI.';
             }
           }
