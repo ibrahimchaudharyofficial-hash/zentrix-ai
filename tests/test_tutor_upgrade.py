@@ -58,7 +58,7 @@ def test_gemini_tutor_uses_connected_provider(monkeypatch):
     assert data["mode"] == "optional AI tutor"
     assert "power rule" in data["explanation"]
     assert "gemini-test:generateContent" in captured["url"]
-    assert "Do not claim" in captured["body"]["contents"][0]["parts"][0]["text"]
+    assert "never claim" in captured["body"]["contents"][0]["parts"][0]["text"]
 
 
 def test_openai_tutor_uses_chat_completions(monkeypatch):

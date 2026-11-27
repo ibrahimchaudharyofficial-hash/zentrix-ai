@@ -236,7 +236,7 @@ def tutor_explain(request_data: TutorRequest):
             try:
                 answer = _tutor_ai_answer(provider,prompt)
                 return {'topic':topic,'mode':'optional AI tutor','provider':AI_PROVIDER_CONFIG[provider]['label'],
-                        'explanation':answer,'verified_calculation':False,'stored':False}
+                        'explanation':answer,'verified_calculation':False,'stored':False,'provider_fallbacks':provider_errors}
             except Exception as exc:
                 provider_errors.append(AI_PROVIDER_CONFIG[provider]['label'] + ': ' + str(exc))
     explanation = _offline_tutor(topic,lesson,question)
