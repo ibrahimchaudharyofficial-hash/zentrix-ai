@@ -12,9 +12,11 @@ ZENTRIX AI is a free mathematics learning workspace designed to help students un
 - **Learn:** search the Definitions library for clear explanations and examples.
 - **Visualise:** explore functions with 2D graphs and interactive, draggable 3D surface plots. The 2D graph studio includes automatic or custom y-axis scaling plus PNG and CSV export; 3D surfaces include built-in examples, custom x/y ranges, camera reset, and PNG/CSV export.
 - **Explore:** use Matrix Lab for supported matrix operations.
-- **Read photos and PDFs:** use browser-based OCR for images or extract selectable text from PDF worksheets locally, review the transcription and send corrected text to the solver.
+- **Read photos and PDFs:** use browser-based OCR for images, extract selectable PDF text, or render scanned PDF pages and OCR them locally in your browser. Review the transcription before solving.
+- **Build equations:** use the equation toolbar for fractions, powers, roots, Greek constants, operators, functions and a live mathematical preview.
+- **Track learning:** review practice accuracy, topic-level performance, a seven-day activity chart, completed exams and saved calculations. Export progress to CSV or reset it locally.
 
-The solver is a tool for learning, not a substitute for checking important work. OCR can misread handwriting and mathematical notation, so review the extracted question before solving.
+The solver is a tool for learning, not a substitute for checking important work. OCR can misread handwriting and mathematical notation, so review the extracted question before solving. Scanned PDF OCR is processed locally and limited to eight pages per run to keep browser memory use manageable. Progress data is stored in browser local storage and does not automatically sync across devices.
 
 ## Free by design
 
