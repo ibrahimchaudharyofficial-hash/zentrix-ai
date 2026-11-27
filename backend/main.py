@@ -28,9 +28,10 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 import engine as E
+from research_engine import analyze_scalar_field, analyze_vector_field
 from billing import router as billing_router
 
-app = FastAPI(title='Zentrix AI', version='4.1.1', description='Mathematics Without Limits — created by M.Ayaan Chaudhry')
+app = FastAPI(title='Zentrix AI', version='4.2.0', description='Mathematics Without Limits — created by M.Ayaan Chaudhry')
 app.add_middleware(GZipMiddleware, minimum_size=1200)
 
 
@@ -619,8 +620,8 @@ def capabilities():
                     'class10_trigonometry', 'class10_circle_calculations',
                     'class10_information_handling', 'class10_probability',
                     'geometry_mensuration', 'coordinate_geometry', 'grouped_statistics',
-                    'combinatorics', 'unit_conversion', 'algebraic_identity_proof', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'photo_question_ocr_client_side', 'introductory_physics_numericals', 'local_practice_generator', 'symbolic_answer_verification'],
-        'features': ['optional_gemini_vision_ocr', 'research_calculus_lab', 'symbolic_identity_verification', 'high_precision_evaluation', 'multi_pass_photo_ocr', 'printable_research_reports', 'adaptive_arcade_difficulty', 'local_learning_profile', 'step_by_step', 'symbolic_verification', 'mathematical_proof_auditor', 'misconception_detection', 'numerical_checks', '2d_plotting', 'geometry_calculations', 'grouped_statistics', 'combinatorics', 'unit_conversion', 'algebraic_identity_check', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'generated_geometry_diagrams', 'browser_based_photo_ocr', 'physics_formula_calculator', 'practice_quizzes', 'exact_answer_comparison'],
+                    'combinatorics', 'unit_conversion', 'algebraic_identity_proof', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'photo_question_ocr_client_side', 'introductory_physics_numericals', 'local_practice_generator', 'symbolic_answer_verification', 'multivariable_calculus', 'vector_calculus', 'critical_point_classification', 'jacobian_divergence_curl'],
+        'features': ['optional_gemini_vision_ocr', 'research_calculus_lab', 'symbolic_identity_verification', 'high_precision_evaluation', 'multi_pass_photo_ocr', 'printable_research_reports', 'adaptive_arcade_difficulty', 'local_learning_profile', 'step_by_step', 'symbolic_verification', 'mathematical_proof_auditor', 'misconception_detection', 'numerical_checks', '2d_plotting', 'geometry_calculations', 'grouped_statistics', 'combinatorics', 'unit_conversion', 'algebraic_identity_check', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'generated_geometry_diagrams', 'browser_based_photo_ocr', 'physics_formula_calculator', 'practice_quizzes', 'exact_answer_comparison', 'multivariable_research_workbench', 'symbolic_gradient_hessian', 'local_critical_point_diagnostics', 'vector_field_jacobian_divergence_curl'],
         'online_ai_required': False,
         'offline_math': True,
     }
@@ -932,6 +933,40 @@ def research_analyze(data: ResearchRequest):
         raise
     except Exception as exc:
         raise HTTPException(400, 'Unable to analyse this expression: ' + str(exc)[:180])
+
+
+
+
+class MultivariableResearchRequest(BaseModel):
+    expression: str = Field(min_length=1, max_length=1200)
+    variables: list[str] = Field(min_length=1, max_length=5)
+    point: dict[str, float]
+    precision: int = Field(default=30, ge=15, le=80)
+
+
+class VectorFieldResearchRequest(BaseModel):
+    components: list[str] = Field(min_length=1, max_length=5)
+    variables: list[str] = Field(min_length=1, max_length=5)
+    point: dict[str, float]
+    precision: int = Field(default=30, ge=15, le=80)
+
+
+@app.post('/api/research/multivariable')
+def research_multivariable(data: MultivariableResearchRequest):
+    """Exact gradient/Hessian analysis with a numerical local critical-point test."""
+    try:
+        return analyze_scalar_field(data.expression, data.variables, data.point, data.precision)
+    except Exception as exc:
+        raise HTTPException(400, 'Multivariable analysis failed: ' + str(exc)[:180])
+
+
+@app.post('/api/research/vector-field')
+def research_vector_field(data: VectorFieldResearchRequest):
+    """Symbolic Jacobian, divergence and 3D curl for a real vector field."""
+    try:
+        return analyze_vector_field(data.components, data.variables, data.point, data.precision)
+    except Exception as exc:
+        raise HTTPException(400, 'Vector-field analysis failed: ' + str(exc)[:180])
 
 
 class IdentityProofRequest(BaseModel):
