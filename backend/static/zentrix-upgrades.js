@@ -88,7 +88,7 @@
     const download=(blob,name)=>{const url=URL.createObjectURL(blob);const a=make('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
     reset.addEventListener('click',()=>{yaw=-0.65;pitch=0.85;draw();});
     png.addEventListener('click',()=>{if(!surface)return;canvas.toBlob(blob=>{if(blob)download(blob,'zentrix-3d-surface.png');});});
-    csv.addEventListener('click',()=>{if(!surface)return;const rows=['x,y,z'];for(let i=0;i<surface.y.length;i++)for(let j=0;j<surface.x.length;j++){const z=surface.z[i][j];rows.push([surface.x[j],surface.y[i],z===null?'':z].join(','));}download(new Blob([rows.join('\\n')],{type:'text/csv;charset=utf-8'}),'zentrix-3d-surface.csv');});
+    csv.addEventListener('click',()=>{if(!surface)return;const rows=['x,y,z'];for(let i=0;i<surface.y.length;i++)for(let j=0;j<surface.x.length;j++){const z=surface.z[i][j];rows.push([surface.x[j],surface.y[i],z===null?'':z].join(','));}download(new Blob([rows.join('\n')],{type:'text/csv;charset=utf-8'}),'zentrix-3d-surface.csv');});
     const draw=()=>{
       if(!surface)return;
       const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
