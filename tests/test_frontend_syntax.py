@@ -24,7 +24,7 @@ def test_inline_javascript_parses(relative_path):
     inline_scripts = [
         script for attributes, script in scripts
         if script.strip()
-        and not re.search(r'application/(?:ld\\+json|json)', attributes, flags=re.I)
+        and not re.search(r'application/(?:ld[+]json|json)', attributes, flags=re.I)
     ]
     assert inline_scripts, f"No inline JavaScript found in {relative_path}"
 
