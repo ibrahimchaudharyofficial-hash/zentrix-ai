@@ -19,6 +19,8 @@ services:
         sync: false
       - key: PADDLE_API_KEY
         sync: false
+      - key: PADDLE_CLIENT_TOKEN
+        sync: false
       - key: PADDLE_WEBHOOK_SECRET_KEY
         sync: false
       - key: PADDLE_PRICE_ID_MONTHLY
