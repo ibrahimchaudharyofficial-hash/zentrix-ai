@@ -10,9 +10,9 @@ ZENTRIX AI is a free mathematics learning workspace designed to help students un
 - **Practise:** generate questions at different difficulty levels and check answers.
 - **Prepare:** use the Exam Centre to practise selected subjects and test lengths.
 - **Learn:** search the Definitions library for clear explanations and examples.
-- **Visualise:** explore functions with graphing tools.
+- **Visualise:** explore functions with 2D graphs and interactive, draggable 3D surface plots.
 - **Explore:** use Matrix Lab for supported matrix operations.
-- **Read photos:** use browser-based OCR to extract a question, review the transcription and send the corrected text to the solver.
+- **Read photos and PDFs:** use browser-based OCR for images or extract selectable text from PDF worksheets locally, review the transcription and send corrected text to the solver.
 
 The solver is a tool for learning, not a substitute for checking important work. OCR can misread handwriting and mathematical notation, so review the extracted question before solving.
 
@@ -35,7 +35,7 @@ Core mathematics and learning tools are intended to remain free. Optional extern
 3. Run `start_zentrix.bat`.
 4. Open the local address shown in the terminal (normally `http://127.0.0.1:8000`).
 
-Core calculations work without connecting an external AI provider.
+Core calculations work without connecting an external AI provider. The installable web app also caches its app shell for offline reopening; solving still requires the app's API server to be reachable. PDF text extraction requires the PDF.js library to load, and scanned PDFs need image OCR.
 
 ## Project and community
 
