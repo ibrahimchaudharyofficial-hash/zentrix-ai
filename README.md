@@ -56,3 +56,8 @@ If you try ZENTRIX AI, share specific feedback: the question you entered, what y
 4. Protect user privacy and avoid collecting unnecessary personal information.
 
 **Created by Ayaan Chaudhry; developed with assistance from ChatGPT.**
+
+
+## Adaptive learning coach
+
+The Learning Studio includes a private adaptive study coach. It reviews locally saved practice attempts, identifies topics with at least two recorded answers, recommends a practice difficulty, tracks a configurable daily target and active-day streak, and starts a recommended practice set. The coach runs entirely in the browser using local progress data; it does not require an AI API key or send study history to a server. Calculus is also available as a dedicated practice topic.

@@ -55,3 +55,15 @@ def test_command_palette_supports_keyboard_navigation_and_actions():
                     "Focus solver", "Solve current question", "Toggle fullscreen",
                     "Toggle compact sidebar", "No matching commands"):
         assert feature in js
+
+
+def test_adaptive_study_coach_is_installed_and_private():
+    html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "backend" / "static" / "zentrix-upgrades.js").read_text(encoding="utf-8")
+    assert '<option value="calculus">Calculus</option>' in html
+    for feature in ("zentrixAdaptiveCoach", "Your adaptive study plan",
+                    "Start recommended practice", "DAILY TARGET",
+                    "active streak", "localDateKey", "topicStats"):
+        assert feature in script
+    assert "zentrix_progress_v1" in script
+    assert "GEMINI_API_KEY" not in script[script.index("function installProgressDashboard"):script.index("function installUpgradeStyles")]

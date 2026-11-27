@@ -306,16 +306,31 @@
     const card=make('section','panel zentrix-progress');card.id='zentrixProgressDashboard';
     const heading=make('div','starter-head');heading.append(make('h2','','Your progress dashboard'),make('span','subtle','Private · saved on this device'));
     const stats=make('div','zentrix-progress-stats');
+    const coach=make('section','zentrix-coach');coach.id='zentrixAdaptiveCoach';
+    const coachHead=make('div','starter-head');
+    coachHead.append(make('h3','','Your adaptive study plan'),make('span','subtle','Local · personalised'));
+    const coachSummary=make('p','zentrix-coach-summary','Complete a few practice questions to unlock personalised recommendations.');
+    const coachMeta=make('div','zentrix-coach-meta');
+    const goalWrap=make('label','subtle','DAILY TARGET');
+    const goalSelect=make('select','field');goalSelect.id='zentrixDailyGoal';
+    [['5','5 questions'],['10','10 questions'],['15','15 questions']].forEach(([value,label])=>{const option=make('option','',label);option.value=value;goalSelect.append(option);});
+    goalWrap.append(goalSelect);
+    const goalTrack=make('div','zentrix-coach-track');const goalFill=make('span','');goalTrack.append(goalFill);
+    const coachActions=make('div','photo-controls');
+    const startPlan=make('button','primary','Start recommended practice ↗');startPlan.type='button';
+    const coachNote=make('p','subtle','Recommendations use your saved practice results on this device. They do not require an AI key or upload your study history.');
+    coachActions.append(startPlan);
+    coach.append(coachHead,coachSummary,coachMeta,goalWrap,goalTrack,coachActions,coachNote);
     const weekly=make('div','zentrix-weekly');
     const topics=make('div','zentrix-topic-progress');
     const actions=make('div','photo-controls');
     const exportBtn=make('button','softbtn','Export progress CSV');exportBtn.type='button';
     const clearBtn=make('button','softbtn','Reset progress');clearBtn.type='button';
     const note=make('p','subtle','Tracks practice answers and completed exams on this device. Existing solver history is counted separately.');
-    actions.append(exportBtn,clearBtn);card.append(heading,stats,weekly,topics,actions,note);
+    actions.append(exportBtn,clearBtn);card.append(heading,stats,coach,weekly,topics,actions,note);
     profile.parentElement.insertBefore(card,profile.nextSibling);
     const key='zentrix_progress_v1';
-    const read=()=>{try{const v=JSON.parse(localStorage.getItem(key)||'{}');return {practice:Array.isArray(v.practice)?v.practice:[],exams:Array.isArray(v.exams)?v.exams:[]};}catch{return {practice:[],exams:[]};}};
+    const read=()=>{try{const v=JSON.parse(localStorage.getItem(key)||'{}');return {practice:Array.isArray(v.practice)?v.practice:[],exams:Array.isArray(v.exams)?v.exams:[],goal:[5,10,15].includes(Number(v.goal))?Number(v.goal):5};}catch{return {practice:[],exams:[],goal:5};}};
     const write=v=>{try{localStorage.setItem(key,JSON.stringify(v));}catch{}};
     const recordPractice=entry=>{const v=read();v.practice.push(entry);v.practice=v.practice.slice(-1000);write(v);render();};
     const recordExam=entry=>{const v=read();v.exams.push(entry);v.exams=v.exams.slice(-200);write(v);render();};
@@ -326,6 +341,25 @@
       let historyCount=0;try{const h=JSON.parse(localStorage.getItem('zentrix_history')||'[]');historyCount=Array.isArray(h)?h.length:0;}catch{}
       stats.replaceChildren();
       [[fmt(total),'Practice attempts'],[accuracy+'%','Practice accuracy'],[fmt(v.exams.length),'Exams completed'],[examBest+'%','Best exam'],[fmt(historyCount),'Saved calculations']].forEach(([value,label])=>{const tile=make('div','zentrix-progress-stat');tile.append(make('strong','',value),make('span','',label));stats.append(tile);});
+      const localDateKey=date=>{const d=new Date(date);return [d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');};
+      const todayKey=localDateKey(new Date()),todayCount=v.practice.filter(x=>x.date&&localDateKey(x.date)===todayKey).length;
+      const goal=v.goal||5;goalSelect.value=String(goal);goalFill.style.width=Math.min(100,todayCount/goal*100)+'%';
+      const activeDays=new Set(v.practice.filter(x=>x.date).map(x=>localDateKey(x.date)));
+      let streak=0,dayCursor=new Date();dayCursor.setHours(0,0,0,0);
+      if(!activeDays.has(localDateKey(dayCursor))){dayCursor.setDate(dayCursor.getDate()-1);}
+      while(activeDays.has(localDateKey(dayCursor))&&streak<365){streak++;dayCursor.setDate(dayCursor.getDate()-1);}
+      const topicStats={};v.practice.forEach(x=>{const k=String(x.topic||'mixed').toLowerCase();topicStats[k]??={total:0,correct:0};topicStats[k].total++;if(x.correct)topicStats[k].correct++;});
+      const eligible=Object.entries(topicStats).filter(([,d])=>d.total>=2).sort((a,b)=>(a[1].correct/a[1].total)-(b[1].correct/b[1].total));
+      const weak=eligible[0],focus=weak?weak[0]:'mixed',focusAccuracy=weak?Math.round(weak[1].correct/weak[1].total*100):null;
+      const level=focusAccuracy===null?'medium':focusAccuracy<50?'easy':focusAccuracy<80?'medium':'hard';
+      const topicLabel=focus==='mixed'?'Mixed practice':focus.charAt(0).toUpperCase()+focus.slice(1);
+      coachSummary.textContent=weak
+        ? 'Focus on '+topicLabel+': your recent saved accuracy is '+focusAccuracy+'%. We suggest '+level+' questions to strengthen this area.'
+        : 'Build your learning profile with a few practice attempts. We will identify topics that need more attention after at least two answers per topic.';
+      coachMeta.replaceChildren(make('span','',todayCount+' / '+goal+' questions today'),make('span','',streak+' day'+(streak===1?'':'s')+' active streak'));
+      goalSelect.value=String(goal);
+      startPlan.textContent=weak?'Practise '+topicLabel+' · '+level+' ↗':'Start mixed practice ↗';
+      startPlan.dataset.topic=focus;startPlan.dataset.level=level;
       weekly.replaceChildren(make('h3','','Last 7 days'));
       const today=new Date();const days=[];
       for(let back=6;back>=0;back--){const d=new Date(today);d.setHours(0,0,0,0);d.setDate(d.getDate()-back);const iso=d.toISOString().slice(0,10);const rows=v.practice.filter(x=>(x.date||'').slice(0,10)===iso);days.push({label:d.toLocaleDateString(undefined,{weekday:'short'}),count:rows.length,correct:rows.filter(x=>x.correct).length});}
@@ -339,6 +373,15 @@
       if(!entries.length)topics.append(make('p','subtle','Complete a practice question to start building your topic profile.'));
       entries.forEach(([name,data])=>{const row=make('div','zentrix-topic-row');const label=make('span','',name);const pct=Math.round(data.correct/data.total*100);const value=make('b','',pct+'% · '+data.total+' attempts');const track=make('div','zentrix-topic-track');const fill=make('span','');fill.style.width=pct+'%';track.append(fill);row.append(label,value,track);topics.append(row);});
     }
+    goalSelect.addEventListener('change',()=>{const current=read();current.goal=Number(goalSelect.value);write(current);render();});
+    startPlan.addEventListener('click',()=>{
+      const topic=startPlan.dataset.topic||'mixed',level=startPlan.dataset.level||'medium';
+      const topicSelect=$('#practiceTopic'),difficultySelect=$('#practiceDifficulty');
+      if(topicSelect)topicSelect.value=topic;
+      if(difficultySelect)difficultySelect.value=level;
+      if(typeof window.goPage==='function')window.goPage('learn');
+      if(typeof window.newPractice==='function')window.newPractice();
+    });
     exportBtn.addEventListener('click',()=>{
       const v=read(),rows=['type,date,topic,correct,score,difficulty'];
       v.practice.forEach(x=>rows.push(['practice',x.date,x.topic,x.correct,'',x.difficulty].map(csvCell).join(',')));
@@ -384,6 +427,16 @@
       .zentrix-equation-tools{display:flex;gap:6px;flex-wrap:wrap}
       .zentrix-equation-tools button{padding:5px 9px;font-size:12px}
       .zentrix-equation-preview{min-height:34px;margin-top:9px;padding:7px 10px;border-radius:8px;background:var(--surface);color:var(--text);overflow-x:auto}
+      .zentrix-coach{margin:14px 0;padding:15px;border:1px solid color-mix(in srgb,var(--accent) 24%,var(--line));border-radius:13px;background:linear-gradient(135deg,var(--accent-soft),var(--surface))}
+      .zentrix-coach .starter-head{margin-bottom:8px}.zentrix-coach h3{font-size:14px;margin:0}
+      .zentrix-coach-summary{font-size:13px;line-height:1.65;margin:8px 0;color:var(--text)}
+      .zentrix-coach-meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:11px;color:var(--muted);margin:9px 0}
+      .zentrix-coach label{display:block;font-size:10px;margin:10px 0 5px}
+      .zentrix-coach .field{max-width:180px;padding:7px 10px}
+      .zentrix-coach-track{height:8px;border-radius:99px;background:var(--surface3);overflow:hidden;margin:8px 0 12px}
+      .zentrix-coach-track span{display:block;height:100%;width:0;background:var(--accent);border-radius:inherit;transition:width .2s}
+      .zentrix-coach .photo-controls{margin:8px 0}
+      .zentrix-coach p.subtle{font-size:10px;line-height:1.5;margin:8px 0 0}
       .zentrix-progress{padding:18px;margin-top:18px}
       .zentrix-progress-stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(115px,1fr));gap:9px;margin:12px 0}
       .zentrix-progress-stat{padding:12px;border:1px solid var(--line);border-radius:10px;background:var(--surface2);display:flex;flex-direction:column;gap:3px}
