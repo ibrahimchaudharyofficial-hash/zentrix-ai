@@ -60,3 +60,36 @@ def test_paddle_event_timestamp_requires_timezone():
         assert getattr(exc, "status_code", None) == 400
     else:
         raise AssertionError("Timezone-naive event timestamp must be rejected")
+
+def test_billing_ready_requires_monthly_and_lifetime_prices():
+    cfg = {
+        "supabase_url": "https://example.supabase.co",
+        "anon": "anon",
+        "service": "service",
+        "paddle_key": "paddle",
+        "webhook_secret": "secret",
+        "monthly": "",
+        "lifetime": "pri_12345678901234567890123456",
+        "donation": "",
+        "checkout_url": "https://checkout.example.com",
+        "environment": "sandbox",
+    }
+    assert not billing._billing_ready(cfg)
+    cfg["monthly"] = "pri_12345678901234567890123456"
+    assert billing._billing_ready(cfg)
+
+
+def test_billing_ready_rejects_unknown_environment():
+    cfg = {
+        "supabase_url": "https://example.supabase.co",
+        "anon": "anon",
+        "service": "service",
+        "paddle_key": "paddle",
+        "webhook_secret": "secret",
+        "monthly": "pri_12345678901234567890123456",
+        "lifetime": "pri_12345678901234567890123456",
+        "donation": "",
+        "checkout_url": "https://checkout.example.com",
+        "environment": "production",
+    }
+    assert not billing._billing_ready(cfg)
