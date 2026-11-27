@@ -285,7 +285,8 @@ async def paddle_webhook(
 
     if event_type in {
         "subscription.created", "subscription.updated", "subscription.canceled",
-        "subscription.paused", "subscription.resumed"
+        "subscription.paused", "subscription.resumed", "subscription.activated",
+        "subscription.trialing", "subscription.past_due"
     }:
         # A subscription is eligible only when its actual item matches our
         # configured monthly price. Never trust custom_data alone for access.
@@ -296,6 +297,12 @@ async def paddle_webhook(
                 status = "canceled"
             elif event_type == "subscription.paused":
                 status = "paused"
+            elif event_type == "subscription.activated":
+                status = "active"
+            elif event_type == "subscription.trialing":
+                status = "trialing"
+            elif event_type == "subscription.past_due":
+                status = "past_due"
             period = data.get("current_billing_period") or {}
             period_end = period.get("ends_at") if isinstance(period, dict) else None
             entitlement.update({
