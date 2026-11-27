@@ -117,8 +117,7 @@
     canvas.addEventListener('pointermove',e=>{if(!dragging)return;yaw+=(e.clientX-lastX)*0.009;pitch=Math.max(-1.35,Math.min(1.35,pitch+(e.clientY-lastY)*0.009));lastX=e.clientX;lastY=e.clientY;draw();});
     canvas.addEventListener('pointerup',()=>dragging=false);canvas.addEventListener('pointercancel',()=>dragging=false);
     window.addEventListener('resize',draw);
-    new MutationObserver(()=>{if(page.classList.contains('active'))requestAnimationFrame(draw);}).observe(page,{attributes:true,attributeFilter:['class']});
-    plot.click();
+    new MutationObserver(()=>{if(page.classList.contains('active')){if(!surface&&!plot.disabled)plot.click();else requestAnimationFrame(draw);}}).observe(page,{attributes:true,attributeFilter:['class']});
   }
 
   function registerOfflineShell(){
