@@ -16,6 +16,7 @@ ZENTRIX AI is a free mathematics learning workspace designed to help students un
 - **Build equations:** use the equation toolbar for fractions, powers, roots, Greek constants, operators, functions and a live mathematical preview.
 - **Track learning:** review practice accuracy, topic-level performance, a seven-day activity chart, completed exams and saved calculations. Export progress to CSV or reset it locally.
 - **Study:** review a built-in formula deck with spaced repetition (Again/Hard/Good/Easy scheduling) across algebra, geometry, trigonometry, calculus, statistics and probability. Use the built-in 25-minute focus / 5-minute break timer and track completed focus sessions locally.
+- **Personalise the interface:** choose Soft Lavender, Ocean Blue, Sage Green or Rose Pink; switch light/dark appearance and comfortable/compact spacing. Preferences are saved on this device. Controls include clearer focus states, larger touch targets and reduced-motion support.
 
 The solver is a tool for learning, not a substitute for checking important work. OCR can misread handwriting and mathematical notation, so review the extracted question before solving. Scanned PDF OCR is processed locally and limited to eight pages per run to keep browser memory use manageable. Progress data is stored in browser local storage and does not automatically sync across devices.
 
