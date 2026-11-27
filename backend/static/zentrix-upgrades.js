@@ -135,10 +135,78 @@
     new MutationObserver(()=>{if(page.classList.contains('active')){if(!surface&&!plot.disabled)plot.click();else requestAnimationFrame(draw);}}).observe(page,{attributes:true,attributeFilter:['class']});
   }
 
+
+  // Upgrade the existing 2D plot with an adjustable vertical window and exports.
+  function install2DGraphTools() {
+    const page=$('#page-graph'), canvas=$('#graphCanvas'), panel=canvas?.closest('.graph-panel');
+    if(!page||!canvas||!panel||$('#zentrix2dTools')) return;
+    const tools=make('div','graph-controls'); tools.id='zentrix2dTools'; tools.style.marginTop='12px';
+    const autoWrap=make('label','subtle','Auto-fit Y'); autoWrap.style.display='flex';autoWrap.style.alignItems='center';autoWrap.style.gap='7px';
+    const auto=make('input');auto.type='checkbox';auto.checked=true;auto.id='zentrix2dAuto';autoWrap.append(auto);
+    const yMin=make('input','field');yMin.type='number';yMin.step='any';yMin.value='-5';yMin.id='zentrix2dYmin';yMin.setAttribute('aria-label','Y minimum');yMin.disabled=true;
+    const yMax=make('input','field');yMax.type='number';yMax.step='any';yMax.value='5';yMax.id='zentrix2dYmax';yMax.setAttribute('aria-label','Y maximum');yMax.disabled=true;
+    const png=make('button','softbtn','Download 2D PNG');png.type='button';png.disabled=true;
+    const csv=make('button','softbtn','Download 2D CSV');csv.type='button';csv.disabled=true;
+    const status=make('span','subtle','Auto-fit shows the useful vertical range.');status.id='zentrix2dStatus';
+    tools.append(autoWrap,yMin,yMax,png,csv,status);panel.append(tools);
+    let data=null, request=0;
+    const download=(blob,name)=>{const url=URL.createObjectURL(blob),a=make('a');a.href=url;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);};
+    function rangeFor(values){
+      const finite=values.filter(v=>Number.isFinite(v)).sort((a,b)=>a-b);
+      if(!finite.length) return null;
+      const lo=finite[Math.floor((finite.length-1)*0.02)],hi=finite[Math.ceil((finite.length-1)*0.98)];
+      const pad=Math.max((hi-lo)*0.08,Math.abs(hi||lo||1)*0.04,0.1);
+      return [lo-pad,hi+pad];
+    }
+    function draw(){
+      if(!data)return;
+      const rect=canvas.getBoundingClientRect(),dpr=Math.min(window.devicePixelRatio||1,2);
+      if(rect.width<10||rect.height<10)return;
+      const w=Math.max(320,Math.floor(rect.width)),h=Math.max(180,Math.floor(rect.height));
+      canvas.width=Math.round(w*dpr);canvas.height=Math.round(h*dpr);
+      const g=canvas.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);
+      const css=getComputedStyle(document.documentElement),grid=css.getPropertyValue('--line').trim(),fg=css.getPropertyValue('--muted').trim(),accent=css.getPropertyValue('--accent').trim(),bg=css.getPropertyValue('--surface2').trim();
+      g.fillStyle=bg;g.fillRect(0,0,w,h);
+      let yr=auto.checked?rangeFor(data.y):[Number(yMin.value),Number(yMax.value)];
+      if(!yr||!yr.every(Number.isFinite)||yr[0]>=yr[1]){status.textContent='Enter a valid increasing Y range.';return;}
+      const xmin=data.x[0],xmax=data.x[data.x.length-1],X=x=>(x-xmin)/(xmax-xmin)*w,Y=y=>h-(y-yr[0])/(yr[1]-yr[0])*h;
+      g.strokeStyle=grid;g.lineWidth=1;g.font='10px sans-serif';g.fillStyle=fg;
+      for(let i=0;i<=10;i++){const xx=i*w/10,yy=i*h/10;g.beginPath();g.moveTo(xx,0);g.lineTo(xx,h);g.stroke();g.beginPath();g.moveTo(0,yy);g.lineTo(w,yy);g.stroke();if(i%2===0){g.fillText((xmin+(xmax-xmin)*i/10).toPrecision(3),Math.max(2,xx-12),h-5);g.fillText((yr[1]-(yr[1]-yr[0])*i/10).toPrecision(3),4,Math.max(10,yy-3));}}
+      g.strokeStyle=fg;g.lineWidth=1.3;
+      if(xmin<=0&&xmax>=0){g.beginPath();g.moveTo(X(0),0);g.lineTo(X(0),h);g.stroke();}
+      if(yr[0]<=0&&yr[1]>=0){g.beginPath();g.moveTo(0,Y(0));g.lineTo(w,Y(0));g.stroke();}
+      g.strokeStyle=accent;g.lineWidth=2.5;g.beginPath();let pen=false;
+      data.x.forEach((x,i)=>{const y=data.y[i];if(y===null||!Number.isFinite(y)||y<yr[0]||y>yr[1]){pen=false;return;}if(pen)g.lineTo(X(x),Y(y));else{g.moveTo(X(x),Y(y));pen=true;}});
+      g.stroke();status.textContent='Y range: '+yr[0].toPrecision(4)+' to '+yr[1].toPrecision(4)+' · '+data.x.length+' samples';
+    }
+    async function plot(){
+      const id=++request,expr=$('#fx').value.trim(),xmin=Number($('#xmin').value),xmax=Number($('#xmax').value);
+      if(!expr){status.textContent='Enter a function of x.';return;}
+      if(!Number.isFinite(xmin)||!Number.isFinite(xmax)||xmin>=xmax||xmax-xmin>100000){status.textContent='Choose a valid increasing X interval.';return;}
+      status.textContent='Sampling function…';
+      try{
+        const response=await fetch('/api/plot',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({expr,xmin,xmax})});
+        const result=await response.json();if(!response.ok)throw new Error(result.detail||'Unable to plot this function.');
+        if(id!==request)return;data=result;draw();png.disabled=false;csv.disabled=false;
+      }catch(error){status.textContent=error.message;}
+    }
+    auto.addEventListener('change',()=>{yMin.disabled=auto.checked;yMax.disabled=auto.checked;draw();});
+    [yMin,yMax].forEach(input=>input.addEventListener('change',draw));
+    png.addEventListener('click',()=>{if(data)canvas.toBlob(blob=>{if(blob)download(blob,'zentrix-2d-graph.png');});});
+    csv.addEventListener('click',()=>{if(!data)return;const rows=['x,y'];data.x.forEach((x,i)=>rows.push([x,data.y[i]===null?'':data.y[i]].join(',')));download(new Blob([rows.join('\\n')],{type:'text/csv;charset=utf-8'}),'zentrix-2d-graph.csv');});
+    const oldButton=panel.querySelector('button[onclick*="plotFunction"]');
+    if(oldButton){const button=oldButton.cloneNode(true);button.removeAttribute('onclick');button.addEventListener('click',plot);oldButton.replaceWith(button);}
+    window.plotFunction=plot;
+    window.setGraph=(expression)=>{$('#fx').value=expression;plot();};
+    $('#fx').addEventListener('keydown',e=>{if(e.key==='Enter')plot();});
+    window.addEventListener('resize',()=>{if(page.classList.contains('active'))draw();},{passive:true});
+    new MutationObserver(()=>{if(page.classList.contains('active')){if(!data)plot();else requestAnimationFrame(draw);}}).observe(page,{attributes:true,attributeFilter:['class']});
+  }
+
   function registerOfflineShell(){
     if(!('serviceWorker' in navigator) || !/^https?:$/.test(location.protocol))return;
     window.addEventListener('load',()=>navigator.serviceWorker.register('/sw.js').catch(()=>{}),{once:true});
   }
-  function boot(){installPdfImporter();install3DGraph();registerOfflineShell();}
+  function boot(){installPdfImporter();install2DGraphTools();install3DGraph();registerOfflineShell();}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
