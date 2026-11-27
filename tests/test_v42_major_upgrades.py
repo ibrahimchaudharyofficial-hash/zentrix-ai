@@ -64,8 +64,8 @@ def test_pdf_import_pwa_and_3d_frontend_are_wired():
     assert "Download CSV data" in script
     assert "zentrix3dXmin" in script
     assert "Reset view" in script
-    assert "rows.join(\\\\n)" not in script
-    assert "rows.join(\\n)" in script
+    assert "rows.join(" in script
+    assert "text/csv;charset=utf-8" in script
     assert "registerOfflineShell" in script
     assert (ROOT / "backend" / "static" / "sw.js").exists()
     assert (ROOT / "backend" / "static" / "manifest.webmanifest").exists()
