@@ -112,6 +112,7 @@ def _apply_billing_event(cfg, event_id, event_type, occurred_at, user_id=None,
             "p_customer_id": customer_id,
             "p_current_period_end": current_period_end,
         },
+        timeout=4.0,
     )
 
 
