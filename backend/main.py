@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 import engine as E
+from billing import router as billing_router
 
 app = FastAPI(title='Zentrix AI', version='4.1.1', description='Mathematics Without Limits — created by M.Ayaan Chaudhry')
 app.add_middleware(GZipMiddleware, minimum_size=1200)
@@ -941,5 +942,7 @@ def knowledge_topics():
         {'name':'Numerical mathematics','items':['Root finding','Numerical integration','Floating-point precision','Error and convergence']},
     ]}
 
+
+app.include_router(billing_router)
 
 app.mount('/', StaticFiles(directory=os.path.join(os.path.dirname(__file__), 'static'), html=True))
