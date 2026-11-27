@@ -822,6 +822,48 @@ def plot(p: Plot):
 
 
 
+class Plot3D(BaseModel):
+    expr: str = Field(min_length=1, max_length=300)
+    xmin: float = Field(default=-5, ge=-1000, le=1000)
+    xmax: float = Field(default=5, ge=-1000, le=1000)
+    ymin: float = Field(default=-5, ge=-1000, le=1000)
+    ymax: float = Field(default=5, ge=-1000, le=1000)
+
+
+@app.post('/api/plot3d')
+def plot_3d(data: Plot3D):
+    """Return a bounded 25x25 sample grid for a safe two-variable surface plot."""
+    if not all(math.isfinite(v) for v in (data.xmin, data.xmax, data.ymin, data.ymax)):
+        raise HTTPException(400, 'Surface bounds must be finite numbers.')
+    if data.xmin >= data.xmax or data.ymin >= data.ymax:
+        raise HTTPException(400, 'Each minimum must be smaller than its maximum.')
+    if data.xmax - data.xmin > 100 or data.ymax - data.ymin > 100:
+        raise HTTPException(400, 'Choose surface intervals no wider than 100 units.')
+    try:
+        sx, sy = sp.Symbol('x'), sp.Symbol('y')
+        expression = E.P(data.expr, {'x': sx, 'y': sy})
+        if expression.free_symbols - {sx, sy}:
+            raise ValueError('Only x and y may be used as surface variables.')
+        fn = sp.lambdify((sx, sy), expression, modules=['numpy'])
+        xs = np.linspace(data.xmin, data.xmax, 25)
+        ys = np.linspace(data.ymin, data.ymax, 25)
+        xx, yy = np.meshgrid(xs, ys)
+        with np.errstate(all='ignore'):
+            values = np.asarray(fn(xx, yy))
+            if values.ndim == 0:
+                values = np.full(xx.shape, values)
+            values = np.broadcast_to(values, xx.shape)
+        zz = np.asarray(values, dtype=complex)
+        valid = (np.abs(zz.imag) < 1e-9) & np.isfinite(zz.real) & (np.abs(zz.real) <= 1e6)
+        z = [[float(zz[i, j].real) if valid[i, j] else None for j in range(len(xs))] for i in range(len(ys))]
+        return {'x': xs.tolist(), 'y': ys.tolist(), 'z': z, 'samples': 25,
+                'expression': data.expr, 'clipped_points': int(valid.size - valid.sum())}
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(400, 'Cannot sample this surface. Check the expression and use only x and y.')
+
+
 class ResearchRequest(BaseModel):
     expression: str = Field(min_length=1, max_length=500)
     variable: str = Field(default='x', min_length=1, max_length=8)
