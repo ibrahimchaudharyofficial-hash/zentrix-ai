@@ -235,6 +235,10 @@ body{background:radial-gradient(ellipse at 12% 0%,rgba(244,190,218,.20),transpar
   <nav class="nav" aria-label="Your work">
     <button data-page="history" title="Review your recent calculations"><span class="navicon">◷</span> Recent work</button>
   </nav>
+  <div class="navlabel">ZENTRIX</div>
+  <nav class="nav" aria-label="ZENTRIX plans and support">
+    <button data-page="premium" title="Explore future Premium plans and support ZENTRIX"><span class="navicon">✧</span> Premium & Support</button>
+  </nav>
   <div class="navlabel">Preferences</div>
   <nav class="nav"><button data-page="settings"><span class="navicon">⚙</span> Settings</button></nav>
   <div class="side-spacer"></div>
@@ -399,6 +403,17 @@ body{background:radial-gradient(ellipse at 12% 0%,rgba(244,190,218,.20),transpar
 
 
 
+  <section class="page" id="page-premium">
+    <div class="page-title"><div class="eyebrow">✦&nbsp; SUPPORT THE FUTURE OF MATHEMATICS</div><h1>Choose how you support ZENTRIX.</h1><p>Core mathematics tools will remain free. Premium options and voluntary support are being planned.</p></div>
+    <div class="arcade-grid" style="grid-template-columns:repeat(auto-fit,minmax(230px,1fr));margin:18px 0">
+      <article class="panel settings-card"><div class="eyebrow">ALWAYS FREE</div><h2 style="margin:13px 0 5px;font-size:21px">Free</h2><p>Essential mathematics access for every learner.</p><h3 style="font-size:26px;margin:15px 0">Rs. 0</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Core calculations and equation solving</li><li>Essential learning tools</li><li>Basic graphing and matrix tools</li></ul><span class="badge" style="display:inline-block;padding:6px 10px;border-radius:20px;background:var(--accent-soft);color:var(--accent)">Available now</span></article>
+      <article class="panel settings-card"><div class="eyebrow">RECURRING SUPPORT</div><h2 style="margin:13px 0 5px;font-size:21px">Premium Monthly</h2><p>For learners who want expanded capabilities.</p><h3 style="font-size:26px;margin:15px 0">Price coming soon</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Planned advanced mathematics tools</li><li>More detailed solution explanations</li><li>Expanded history and productivity features</li></ul><button class="softbtn" type="button" disabled aria-disabled="true">Coming soon</button></article>
+      <article class="panel settings-card"><div class="eyebrow">ONE-TIME PURCHASE</div><h2 style="margin:13px 0 5px;font-size:21px">Premium Lifetime</h2><p>One payment for ongoing Premium access.</p><h3 style="font-size:26px;margin:15px 0">Price coming soon</h3><ul class="note" style="line-height:2;padding-left:18px"><li>Planned Premium feature bundle</li><li>No recurring subscription</li><li>Future feature improvements, subject to published terms</li></ul><button class="softbtn" type="button" disabled aria-disabled="true">Coming soon</button></article>
+    </div>
+    <div class="panel settings-card" style="margin-top:15px"><div class="eyebrow">OPTIONAL · VOLUNTARY</div><h2 style="margin:12px 0 5px;font-size:20px">Support ZENTRIX AI</h2><p>Enjoying ZENTRIX? In the future, you'll be able to make a voluntary contribution to help support development. Donations will never be required to use the free mathematics tools.</p><button class="softbtn" type="button" disabled aria-disabled="true">Donation options coming soon</button></div>
+    <div class="settings-note" style="margin-top:15px"><strong>Transparent status:</strong> These plans are a preview only. No payments are currently accepted, no subscription is being created, and no Premium feature restrictions are active. Prices and included features will be confirmed before launch.</div>
+  </section>
+
   <section class="page" id="page-settings">
     <div class="page-title"><h1>Settings</h1><p>Manage your workspace. Core mathematics works without signing in; sign in to sync your progress across devices.</p></div>
     <div class="settings-grid" id="publicSettingsGrid">
@@ -457,7 +472,7 @@ const examples=[['Definitions','Look up simple maths terms and examples','defini
 const getHistory=()=>{try{const saved=localStorage.getItem('zentrix_history');if(saved)return JSON.parse(saved);const legacy=JSON.parse(localStorage.getItem('zx')||'[]');return legacy.map(i=>({q:i.q,a:i.a,date:new Date().toISOString(),topic:'Mathematics'}))}catch{return[]}};
 function notify(message){const t=$('#toast');t.textContent=message;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),2600)}
 
-function goPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));$$('.nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===name));$('#crumbTitle').textContent=({home:'Home',definitions:'Definitions',exam:'Exam centre',matrix:'Matrix Lab',graph:'Graphs',history:'Recent work',learn:'Learn & practise',arcade:'Math games',auditor:'Verify solutions',coach:'Fix mistakes',settings:'Settings'})[name]||name;toggleMenu(false);if(name==='definitions')renderDefinitions();if(name==='exam')renderExamStats();if(name==='history')drawHistory();if(name==='learn'){renderFormulaLibrary();loadLearningProfile();}if(name==='arcade')loadArcadeStats();if(name==='settings'){loadGeminiStatus();loadAISettings();$('#aboutOptIn').checked=localStorage.getItem('zentrix_about_optin')==='1';toggleAbout(false)}if(name==='graph')setTimeout(plotFunction,80);window.scrollTo({top:0,behavior:'smooth'})}
+function goPage(name){$$('.page').forEach(p=>p.classList.toggle('active',p.id==='page-'+name));$$('.nav button[data-page]').forEach(b=>b.classList.toggle('active',b.dataset.page===name));$('#crumbTitle').textContent=({home:'Home',definitions:'Definitions',exam:'Exam centre',matrix:'Matrix Lab',graph:'Graphs',history:'Recent work',learn:'Learn & practise',arcade:'Math games',auditor:'Verify solutions',coach:'Fix mistakes',settings:'Settings',premium:'Premium & Support'})[name]||name;toggleMenu(false);if(name==='definitions')renderDefinitions();if(name==='exam')renderExamStats();if(name==='history')drawHistory();if(name==='learn'){renderFormulaLibrary();loadLearningProfile();}if(name==='arcade')loadArcadeStats();if(name==='settings'){loadGeminiStatus();loadAISettings();$('#aboutOptIn').checked=localStorage.getItem('zentrix_about_optin')==='1';toggleAbout(false)}if(name==='graph')setTimeout(plotFunction,80);window.scrollTo({top:0,behavior:'smooth'})}
 $$('.nav button[data-page]').forEach(b=>b.addEventListener('click',()=>goPage(b.dataset.page)));
 function toggleMenu(force){const open=typeof force==='boolean'?force:!$('#sidebar').classList.contains('open');$('#sidebar').classList.toggle('open',open);$('#overlay').classList.toggle('open',open)}
 function toggleTheme(){const d=document.documentElement;d.dataset.theme=d.dataset.theme==='dark'?'light':'dark';localStorage.setItem('zentrix_theme',d.dataset.theme);if($('#page-graph').classList.contains('active'))plotFunction()}
