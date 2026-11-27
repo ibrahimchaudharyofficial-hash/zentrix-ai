@@ -8,7 +8,7 @@
   function setCollapsed(value){
     const collapsed=!!value&&desktop();
     root.dataset.sidebar=collapsed?'collapsed':'expanded';
-    root.style.setProperty('--sidebar',collapsed?'76px':'208px');
+    if(collapsed)root.style.setProperty('--sidebar','76px');else root.style.removeProperty('--sidebar');
     const btn=document.getElementById('zentrixSidebarToggle');
     if(btn){btn.setAttribute('aria-expanded',String(!collapsed));btn.setAttribute('aria-label',collapsed?'Expand sidebar':'Collapse sidebar');btn.title=collapsed?'Expand sidebar':'Collapse sidebar';btn.textContent=collapsed?'»':'«';}
     sidebar.querySelectorAll('.nav button').forEach(b=>{if(!b.dataset.fullLabel)b.dataset.fullLabel=b.textContent.trim();b.title=b.dataset.fullLabel;});
@@ -37,7 +37,7 @@
     @media(prefers-reduced-motion:reduce){.sidebar,.main{transition:none!important}}
   `;
   document.head.append(style);setCollapsed(saved());
-  window.addEventListener('resize',()=>{if(!desktop()&&root.dataset.sidebar==='collapsed'){root.dataset.sidebar='expanded';root.style.setProperty('--sidebar','252px')}else if(desktop())setCollapsed(saved())},{passive:true});
+  window.addEventListener('resize',()=>{if(!desktop()&&root.dataset.sidebar==='collapsed'){root.dataset.sidebar='expanded';root.style.removeProperty('--sidebar')}else if(desktop())setCollapsed(saved())},{passive:true});
   document.addEventListener('keydown',event=>{
     if(event.altKey&&!event.ctrlKey&&!event.metaKey&&/^[1-9]$/.test(event.key)){
       const pages=['home','matrix','graph','definitions','exam','learn','arcade','auditor','coach'],page=pages[Number(event.key)-1];
