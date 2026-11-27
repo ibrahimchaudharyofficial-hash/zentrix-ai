@@ -244,9 +244,12 @@ async def paddle_webhook(
     if not cfg["webhook_secret"] or not cfg["service"] or not cfg["supabase_url"]:
         raise HTTPException(503, "Billing webhook is not configured.")
 
-    raw = await request.body()
-    if len(raw) > MAX_WEBHOOK_BYTES:
-        raise HTTPException(413, "Webhook payload is too large.")
+    body = bytearray()
+    async for chunk in request.stream():
+        body.extend(chunk)
+        if len(body) > MAX_WEBHOOK_BYTES:
+            raise HTTPException(413, "Webhook payload is too large.")
+    raw = bytes(body)
     if not _verify_paddle_signature(raw, paddle_signature, cfg["webhook_secret"]):
         raise HTTPException(401, "Invalid or expired Paddle signature.")
 
@@ -260,9 +263,9 @@ async def paddle_webhook(
     event_id = event.get("event_id")
     event_type = event.get("event_type")
     data = event.get("data") or {}
-    if (not isinstance(event_id, str) or not event_id.startswith("evt_")
-            or len(event_id) > 255 or not isinstance(event_type, str)
-            or len(event_type) > 120 or not isinstance(data, dict)):
+    if (not isinstance(event_id, str) or not re.fullmatch(r"evt_[a-z0-9]{26}", event_id)
+            or not isinstance(event_type, str) or len(event_type) > 120
+            or not isinstance(data, dict)):
         raise HTTPException(400, "Malformed Paddle event.")
     occurred_at = _parse_occurred_at(event.get("occurred_at"))
 
