@@ -69,3 +69,16 @@ def test_pdf_import_pwa_and_3d_frontend_are_wired():
     assert "registerOfflineShell" in script
     assert (ROOT / "backend" / "static" / "sw.js").exists()
     assert (ROOT / "backend" / "static" / "manifest.webmanifest").exists()
+
+
+def test_2d_graph_controls_and_exports_are_installed():
+    script = (ROOT / "backend" / "static" / "zentrix-upgrades.js").read_text(encoding="utf-8")
+    assert "install2DGraphTools" in script
+    assert "zentrix2dYmin" in script
+    assert "zentrix2dYmax" in script
+    assert "Auto-fit Y" in script
+    assert "Download 2D PNG" in script
+    assert "Download 2D CSV" in script
+    assert "window.plotFunction=plot" in script
+    assert "/api/plot" in script
+    assert "text/csv;charset=utf-8" in script
