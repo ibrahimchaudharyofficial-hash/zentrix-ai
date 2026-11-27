@@ -32,7 +32,7 @@ Set these in the actual SnapDeploy backend's environment settings (port 8000), n
 - `SUPABASE_URL`
 - `SUPABASE_ANON_KEY`
 - `SUPABASE_SERVICE_ROLE_KEY` — server only
-- `PADDLE_API_KEY` — server only
+- `PADDLE_API_KEY` — server only; grant the `transaction.write` permission needed to create checkout transactions
 - `PADDLE_CLIENT_TOKEN` — browser-safe token beginning `test_` in sandbox or `live_` in production; the app exposes only this restricted client token through its public configuration endpoint
 - `PADDLE_WEBHOOK_SECRET_KEY` — server only
 - `PADDLE_PRICE_ID_MONTHLY` — Paddle price ID beginning `pri_`
