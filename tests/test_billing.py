@@ -67,6 +67,7 @@ def test_billing_ready_requires_monthly_and_lifetime_prices():
         "anon": "anon",
         "service": "service",
         "paddle_key": "paddle",
+        "client_token": "test_" + "a" * 27,
         "webhook_secret": "secret",
         "monthly": "",
         "lifetime": "pri_12345678901234567890123456",
