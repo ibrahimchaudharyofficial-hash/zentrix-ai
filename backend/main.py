@@ -31,7 +31,7 @@ import engine as E
 from research_engine import analyze_scalar_field, analyze_vector_field
 from billing import router as billing_router
 
-app = FastAPI(title='Zentrix AI', version='4.2.0', description='Mathematics Without Limits — created by M.Ayaan Chaudhry')
+app = FastAPI(title='Zentrix AI', version='4.1.1', description='Mathematics Without Limits — created by M.Ayaan Chaudhry')
 app.add_middleware(GZipMiddleware, minimum_size=1200)
 
 
