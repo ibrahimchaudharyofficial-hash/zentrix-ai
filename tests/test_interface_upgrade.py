@@ -71,7 +71,8 @@ def test_adaptive_study_coach_is_installed_and_private():
 def test_connected_ai_scans_questions_automatically_without_provider_prompt():
     html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
     assert "async function recognisePhoto(){if(connectedVisionProviders.size){await readPhotoWithAI();return}return recognisePhotoLocally()}" in html
-    assert "const provider=['gemini','openai','anthropic','openrouter'].find(id=>connectedVisionProviders.has(id))" in html
+    assert "const providers=['gemini','openai','anthropic','openrouter'].filter(id=>connectedVisionProviders.has(id))" in html
+    assert 'for(const provider of providers)' in html
     assert "if(!confirm('AI math reading sends a compressed copy" not in html
     reader = html[html.index("async function readPhotoWithAI"):html.index("async function useRecognisedText")]
     assert "if(!confirm(" not in reader
