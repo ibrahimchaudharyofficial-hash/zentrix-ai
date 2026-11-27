@@ -22,7 +22,7 @@ The connected project already has the four billing migrations recorded under `su
 4. Optionally create a fixed-amount one-time donation price. Variable-amount donations need a separate reviewed checkout flow.
 5. Set up a checkout URL on the deployed ZENTRIX domain and have Paddle approve that domain.
 6. Create a notification destination pointing to `https://YOUR-APP-DOMAIN/api/billing/webhook`.
-7. Subscribe to `subscription.created`, `subscription.updated`, `subscription.canceled`, `subscription.paused`, `subscription.resumed`, and `transaction.completed`.
+7. Subscribe to `subscription.created`, `subscription.updated`, `subscription.activated`, `subscription.trialing`, `subscription.past_due`, `subscription.canceled`, `subscription.paused`, `subscription.resumed`, and `transaction.completed`.
 8. Copy the notification destination's endpoint secret. Keep it private.
 
 ## 3. Backend environment variables
