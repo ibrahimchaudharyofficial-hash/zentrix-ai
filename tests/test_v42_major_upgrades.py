@@ -82,3 +82,19 @@ def test_2d_graph_controls_and_exports_are_installed():
     assert "window.plotFunction=plot" in script
     assert "/api/plot" in script
     assert "text/csv;charset=utf-8" in script
+
+
+def test_scanned_pdf_ocr_equation_editor_and_progress_dashboard_are_wired():
+    script = (ROOT / "backend" / "static" / "zentrix-upgrades.js").read_text(encoding="utf-8")
+    assert "function installScannedPdfOcr()" in script
+    assert "OCR scanned PDF pages" in script
+    assert "getOcrWorker()" in script
+    assert "function installEquationEditor()" in script
+    assert "zentrixEquationEditor" in script
+    assert "Fraction" in script
+    assert "function installProgressDashboard()" in script
+    assert "zentrixProgressDashboard" in script
+    assert "zentrix_progress_v1" in script
+    assert "Export progress CSV" in script
+    assert "Reset progress" in script
+    assert "Last 7 days" in script
