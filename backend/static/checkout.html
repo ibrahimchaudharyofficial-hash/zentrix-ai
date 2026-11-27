@@ -43,6 +43,7 @@
         if(!token.startsWith(expectedPrefix)||!new RegExp('^'+expectedPrefix+'[A-Za-z0-9]{27}$').test(token)){
           throw new Error('The payment environment is not configured correctly.');
         }
+        if(!window.Paddle?.Initialize||!window.Paddle?.Checkout?.open)throw new Error('Paddle checkout could not load. Check your connection and try again.');
         if(config.paddle_environment==='sandbox')window.Paddle.Environment.set('sandbox');
         window.Paddle.Initialize({
           token,
