@@ -164,7 +164,7 @@ def _verify_paddle_signature(raw_body, signature_header, secret):
     if not timestamps or not signatures or not timestamps[0].isdigit():
         return False
     timestamp = int(timestamps[0])
-    if abs(time.time() - timestamp) > 300:
+    if abs(time.time() - timestamp) > 5:
         return False
     signed = str(timestamp).encode() + b":" + raw_body
     expected = hmac.new(secret.encode(), signed, hashlib.sha256).hexdigest()
