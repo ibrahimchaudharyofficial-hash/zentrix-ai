@@ -371,7 +371,7 @@ def h_matrix(r, op, s):
     elif op == 'eig':
         if M.rows != M.cols: raise ValueError('Eigenvalues require a square matrix.')
         ev=M.eigenvals(); lam=sp.Symbol('\\lambda'); char=sp.factor(M.charpoly(lam).as_expr())
-        r.step('Characteristic equation', L(sp.Eq(char, 0)), 'Set the characteristic polynomial equal to zero.'); r.step('Eigenvalues', ', '.join(f'{L(k)} (multiplicity {v})' for k,v in ev.items()))
+        r.step('Characteristic equation', L(sp.Eq(char, 0)), 'Set the characteristic polynomial equal to zero.'); r.step('Solve the characteristic equation', ', '.join(f'{L(k)} (multiplicity {v})' for k,v in ev.items()))
         r.step('Eigenvectors', '; '.join(f'λ={L(val)}: span({L(sp.Matrix(basis))})' for val,mult,basis in M.eigenvects()))
         r.done(', '.join(f'λ={L(k)} × {v}' for k,v in ev.items()), str(ev))
         if A is not None:

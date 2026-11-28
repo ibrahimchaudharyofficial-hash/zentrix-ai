@@ -84,4 +84,4 @@ The Matrix Lab supports exact symbolic operations through the solver:
 - `lu of [[...]]` and `qr of [[...]]` for exact matrix factorizations
 - `svd of [[...]]` and `condition number of [[...]]` for real numeric matrices
 
-Use nested square-bracket notation, for example `[[1,2],[3,4]]`. SVD and condition-number calculations require real numeric entries; the other listed operations retain symbolic entries where supported. The Matrix Lab also exposes quick-action cards for these operations so users can try each workflow without memorising command syntax. Verification checks are diagnostics, not a substitute for a formal proof.
+Use nested square-bracket notation, for example `[[1,2],[3,4]]`. SVD and condition-number calculations require real numeric entries; the other listed operations retain symbolic entries where supported. The Matrix Lab also exposes quick-action cards for these operations so users can try each workflow without memorising command syntax. The eigenvalue workflow displays both the characteristic equation and its roots, including algebraic multiplicities. Verification checks are diagnostics, not a substitute for a formal proof.
