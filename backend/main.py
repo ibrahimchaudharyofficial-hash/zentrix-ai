@@ -928,6 +928,92 @@ def plot(p: Plot):
         raise HTTPException(400, 'Cannot plot this expression. Check its syntax and supported functions.')
 
 
+@app.post('/api/plot/analyze')
+def analyze_plot(p: Plot):
+    """Return bounded numerical roots and stationary points plus symbolic derivatives."""
+    if not math.isfinite(p.xmin) or not math.isfinite(p.xmax):
+        raise HTTPException(400, 'Plot bounds must be finite numbers.')
+    if p.xmin >= p.xmax or p.xmax - p.xmin > 100000:
+        raise HTTPException(400, 'Choose an increasing plotting interval no wider than 100,000 units.')
+    try:
+        expression = E.P(p.expr)
+        if expression.free_symbols - {E.x}:
+            raise ValueError('Only x may be used as the graph variable.')
+        derivative = sp.simplify(sp.diff(expression, E.x))
+        second = sp.simplify(sp.diff(derivative, E.x))
+        fn = sp.lambdify(E.x, expression, modules=['numpy'])
+        dfn = sp.lambdify(E.x, derivative, modules=['numpy'])
+        d2fn = sp.lambdify(E.x, second, modules=['numpy'])
+
+        def evaluate(function, point):
+            try:
+                value = complex(np.asarray(function(float(point))).item())
+                if not (math.isfinite(value.real) and math.isfinite(value.imag)) or abs(value.imag) > 1e-8:
+                    return float('nan')
+                return float(value.real)
+            except Exception:
+                return float('nan')
+
+        def locate_zeros(function, samples=480):
+            grid = np.linspace(p.xmin, p.xmax, samples + 1)
+            values = [evaluate(function, point) for point in grid]
+            finite = [abs(value) for value in values if math.isfinite(value)]
+            scale = max([1.0] + finite)
+            tolerance = 1e-10 * scale
+            found = []
+            def add(point):
+                if p.xmin - 1e-9 <= point <= p.xmax + 1e-9 and not any(abs(point-old) < 1e-5 for old in found):
+                    found.append(float(point))
+            for i in range(samples):
+                left, right = float(grid[i]), float(grid[i+1])
+                fl, fr = values[i], values[i+1]
+                if math.isfinite(fl) and abs(fl) <= tolerance:
+                    add(left)
+                if not (math.isfinite(fl) and math.isfinite(fr)) or fl == 0 or fr == 0 or (fl > 0) == (fr > 0):
+                    continue
+                lo, hi, flo = left, right, fl
+                valid = True
+                for _ in range(48):
+                    mid = (lo + hi) / 2
+                    fm = evaluate(function, mid)
+                    if not math.isfinite(fm):
+                        valid = False
+                        break
+                    if abs(fm) <= tolerance:
+                        lo = hi = mid
+                        break
+                    if (flo > 0) == (fm > 0):
+                        lo, flo = mid, fm
+                    else:
+                        hi = mid
+                root = (lo + hi) / 2
+                if valid and abs(evaluate(function, root)) <= max(tolerance * 100, 1e-7):
+                    add(root)
+            if math.isfinite(values[-1]) and abs(values[-1]) <= tolerance:
+                add(float(grid[-1]))
+            return sorted(found)
+
+        roots = [{'x': round(root, 8), 'y': 0.0} for root in locate_zeros(fn)]
+        stationary = []
+        for point in locate_zeros(dfn):
+            curvature = evaluate(d2fn, point)
+            kind = 'local minimum' if curvature > 1e-7 else 'local maximum' if curvature < -1e-7 else 'stationary / flat'
+            stationary.append({'x': round(point, 8), 'y': round(evaluate(fn, point), 8), 'kind': kind})
+        y_intercept = evaluate(fn, 0) if p.xmin <= 0 <= p.xmax else None
+        return {
+            'expression': str(expression),
+            'derivative': str(derivative),
+            'second_derivative': str(second),
+            'roots': roots[:30],
+            'critical_points': stationary[:30],
+            'y_intercept': y_intercept if y_intercept is not None and math.isfinite(y_intercept) else None,
+            'method': 'Numerical sign-change search over 480 intervals; approximate results, not a proof.',
+            'interval': [p.xmin, p.xmax],
+        }
+    except Exception:
+        raise HTTPException(400, 'Cannot analyse this expression. Check its syntax and supported functions.')
+
+
 
 class Plot3D(BaseModel):
     expr: str = Field(min_length=1, max_length=300)
