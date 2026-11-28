@@ -90,3 +90,12 @@ Use nested square-bracket notation, for example `[[1,2],[3,4]]`. SVD and conditi
 ## Graph Studio analysis
 
 Graph Studio can numerically estimate real roots and stationary points over the selected x-interval, classify turning points using the second derivative, and display the first two symbolic derivatives and y-intercept. The analysis is explicitly labelled approximate: it uses a bounded sign-change search and is not a proof or a complete root-isolation method. Constant and identically-zero functions are handled separately.
+
+
+## Exam Centre
+
+Practice tests can be run with a 60-second-per-question limit, a 90-second-per-question limit, or without a timer. Timed sessions finish automatically when the clock reaches zero. The result screen includes an answer review with the selected answer, correct answer and worked explanation; unanswered questions are included in the review. The question bank includes arithmetic, algebra, geometry, trigonometry, statistics, calculus, matrices and probability.
+
+## Proof Auditor and misconception feedback
+
+The Proof Auditor checks adjacent algebra lines using symbolic comparison and polynomial solution-set checks. When a transition appears invalid, it can add a cautious pattern-based misconception suggestion and a short practice prompt. These suggestions include a confidence label and are learning hints, not definitive claims about a student's reasoning.
