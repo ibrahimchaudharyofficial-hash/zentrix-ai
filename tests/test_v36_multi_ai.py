@@ -11,6 +11,7 @@ def _payload(provider='openai'):
 
 
 def test_ai_provider_status_lists_supported_services(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     for key in ('GEMINI_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY','OPENROUTER_API_KEY'):
         monkeypatch.delenv(key, raising=False)
     r = TestClient(main.app, base_url='http://127.0.0.1').get('/api/settings/ai')
@@ -20,6 +21,7 @@ def test_ai_provider_status_lists_supported_services(monkeypatch):
 
 
 def test_openai_vision_ocr_dispatches_image_and_returns_text(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     monkeypatch.setenv('OPENAI_API_KEY', 'test-key-' + 'x' * 24)
     monkeypatch.setenv('OPENAI_MODEL', 'gpt-4o-mini')
     captured = {}
@@ -40,6 +42,7 @@ def test_openai_vision_ocr_dispatches_image_and_returns_text(monkeypatch):
 
 
 def test_anthropic_vision_uses_base64_image_block(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     monkeypatch.setenv('ANTHROPIC_API_KEY', 'test-key-' + 'x' * 24)
     monkeypatch.setenv('ANTHROPIC_MODEL', 'claude-test')
     captured = {}
@@ -57,20 +60,23 @@ def test_anthropic_vision_uses_base64_image_block(monkeypatch):
 
 
 def test_provider_vision_requires_connection(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     monkeypatch.delenv('OPENAI_API_KEY', raising=False)
     r = TestClient(main.app, base_url='http://127.0.0.1').post('/api/ocr/vision', json=_payload('openai'))
     assert r.status_code == 400
     assert 'Connect OpenAI' in r.json()['detail']
 
 
-def test_connected_provider_becomes_selectable_for_photo_ocr():
+def test_connected_provider_is_used_automatically_for_photo_ocr():
     from pathlib import Path
     page = (Path(main.__file__).parent / 'static' / 'index.html').read_text(encoding='utf-8')
-    assert "[...select.options].forEach(o=>{o.disabled=!connectedVisionProviders.has(o.value)})" in page
-    assert "connectedVisionProviders.add(provider);setVisionOcrAvailability()" in page
+    assert "connectedVisionProviders=new Set((j.providers||[]).filter(x=>x.connected).map(x=>x.id))" in page
+    assert "const providers=['gemini','openai','anthropic','openrouter'].filter(id=>connectedVisionProviders.has(id))" in page
+    assert "for(const provider of providers)" in page
 
 
 def test_ai_settings_endpoint_returns_provider_list_shape(monkeypatch):
+    monkeypatch.setenv('ZENTRIX_PUBLIC_MODE', 'false')
     for key in ('GEMINI_API_KEY','OPENAI_API_KEY','ANTHROPIC_API_KEY','OPENROUTER_API_KEY'):
         monkeypatch.delenv(key, raising=False)
     response = TestClient(main.app, base_url='http://127.0.0.1').get('/api/settings/ai')

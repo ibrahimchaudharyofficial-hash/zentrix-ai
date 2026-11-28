@@ -1,0 +1,65 @@
+import os, sys
+from fastapi.testclient import TestClient
+
+ROOT = os.path.join(os.path.dirname(__file__), '..')
+sys.path.insert(0, os.path.join(ROOT, 'backend'))
+import main
+
+
+def test_graph_analysis_finds_roots_derivative_and_minimum():
+    client = TestClient(main.app)
+    response = client.post('/api/plot/analyze', json={'expr': 'x^2-4*x+3', 'xmin': -2, 'xmax': 6})
+    assert response.status_code == 200, response.text
+    data = response.json()
+    assert data['derivative'] == '2*x - 4'
+    assert [round(item['x']) for item in data['roots']] == [1, 3]
+    assert len(data['critical_points']) == 1
+    assert data['critical_points'][0]['kind'] == 'local minimum'
+    assert data['critical_points'][0]['x'] == 2.0
+    assert data['y_intercept'] == 3.0
+
+
+def test_graph_analysis_rejects_unsafe_or_invalid_expressions():
+    client = TestClient(main.app)
+    bad = client.post('/api/plot/analyze', json={'expr': "__import__('os').system('whoami')", 'xmin': -2, 'xmax': 2})
+    assert bad.status_code == 400
+    bad_bounds = client.post('/api/plot/analyze', json={'expr': 'x', 'xmin': 2, 'xmax': 2})
+    assert bad_bounds.status_code == 400
+
+
+def test_graph_studio_exposes_analysis_action():
+    path = os.path.join(ROOT, 'backend', 'static', 'index.html')
+    with open(path, encoding='utf-8') as f:
+        html = f.read()
+    assert 'Analyse function' in html
+    assert '/api/plot/analyze' in html
+    assert 'graphAnalysis' in html
+
+
+def test_graph_analysis_handles_constant_and_zero_functions():
+    client = TestClient(main.app)
+    constant = client.post('/api/plot/analyze', json={'expr': '5', 'xmin': -2, 'xmax': 2}).json()
+    assert constant['constant_function'] is True
+    assert constant['critical_points'] == []
+    assert constant['roots'] == []
+    zero = client.post('/api/plot/analyze', json={'expr': '0', 'xmin': -2, 'xmax': 2}).json()
+    assert zero['identically_zero'] is True
+    assert zero['roots'] == []
+
+
+def test_graph_analysis_uses_scale_aware_root_tolerance():
+    client = TestClient(main.app)
+    response = client.post('/api/plot/analyze', json={'expr': '1e-12*(x-1)', 'xmin': -2, 'xmax': 2})
+    assert response.status_code == 200
+    assert len(response.json()['roots']) == 1
+    assert abs(response.json()['roots'][0]['x'] - 1) < 1e-5
+
+
+def test_graph_analysis_detects_tangent_roots_at_turning_points():
+    client = TestClient(main.app)
+    response = client.post('/api/plot/analyze', json={'expr': '(x-1)^2', 'xmin': -2, 'xmax': 4})
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data['roots']) == 1
+    assert data['roots'][0]['x'] == 1.0
+    assert data['critical_points'][0]['kind'] == 'local minimum'

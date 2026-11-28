@@ -25,8 +25,10 @@ def test_school_level_navigation_removes_university_math_pages():
     for label in ('Start here', 'Math tools', 'Learn & improve', 'Your work',
                   'Verify solutions', 'Fix mistakes', 'School Mathematics'):
         assert label in page.text
-    for removed in ('Advanced maths', 'Calculus', 'Differential Equations'):
+    for removed in ('Advanced maths', 'Differential Equations'):
         assert removed not in page.text
+    assert 'data-page="calculus"' not in page.text
+    assert 'id="page-calculus"' not in page.text
     for page_id in ('page-graph', 'page-learn', 'page-arcade', 'page-auditor',
                     'page-coach', 'page-history'):
         assert f'id="{page_id}"' in page.text

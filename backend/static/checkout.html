@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#fff3f8">
+  <title>Secure checkout · ZENTRIX AI</title>
+  <style>
+    :root{color-scheme:light;--bg:#fff9fc;--card:#fff;--ink:#352b3b;--muted:#786d7d;--accent:#9e6485;--line:#f0dfe8}
+    *{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:22px;background:radial-gradient(ellipse at 80% -10%,#f5dce9,transparent 42%),var(--bg);font:15px/1.6 system-ui,sans-serif;color:var(--ink)}
+    main{width:min(100%,520px);padding:34px;border:1px solid var(--line);border-radius:24px;background:var(--card);box-shadow:0 18px 55px #b8799915;text-align:center}
+    .mark{width:54px;height:54px;display:grid;place-items:center;margin:0 auto 18px;border-radius:17px;background:linear-gradient(145deg,#b6aaff,#8c9de9 58%,#91d9c8);color:white;font-size:27px;font-weight:800}
+    h1{font-size:25px;margin:0 0 9px;letter-spacing:-.5px}p{color:var(--muted);margin:0 0 18px}
+    #status{padding:13px;border-radius:12px;background:#fff1f7;color:#79506a;min-height:48px}
+    a{display:inline-block;margin-top:22px;color:var(--accent);font-weight:650;text-decoration:none}
+  </style>
+  <script src="https://cdn.paddle.com/paddle/v2/paddle.js"></script>
+</head>
+<body>
+  <main>
+    <div class="mark">Z</div>
+    <h1>Secure ZENTRIX checkout</h1>
+    <p>Your payment is handled securely by Paddle. ZENTRIX never receives or stores your card details.</p>
+    <div id="status" role="status" aria-live="polite">Preparing secure checkout…</div>
+    <a href="/">Return to ZENTRIX AI</a>
+  </main>
+  <script>
+    (async function(){
+      const status=document.getElementById('status');
+      const transactionId=new URLSearchParams(window.location.search).get('_ptxn');
+      if(!transactionId||!/^txn_[a-z0-9]{26}$/.test(transactionId)){
+        status.textContent='No valid checkout transaction was found. Return to ZENTRIX and start again.';
+        return;
+      }
+      let paymentCompleted=false;
+      try{
+        const response=await fetch('/api/public-config',{cache:'no-store'});
+        const config=await response.json();
+        if(!response.ok||!config.paddle_client_token){
+          throw new Error('Checkout is not configured yet. Please try again later.');
+        }
+        const token=config.paddle_client_token;
+        const expectedPrefix=config.paddle_environment==='sandbox'?'test_':'live_';
+        if(!token.startsWith(expectedPrefix)||!new RegExp('^'+expectedPrefix+'[A-Za-z0-9]{27}$').test(token)){
+          throw new Error('The payment environment is not configured correctly.');
+        }
+        if(!window.Paddle?.Initialize||!window.Paddle?.Checkout?.open)throw new Error('Paddle checkout could not load. Check your connection and try again.');
+        if(config.paddle_environment==='sandbox')window.Paddle.Environment.set('sandbox');
+        window.Paddle.Initialize({
+          token,
+          eventCallback:function(event){
+            if(event&&event.name==='checkout.completed'){
+              paymentCompleted=true;
+              status.textContent='Payment completed. Your Premium access will activate after the verified payment notification is processed. Return to ZENTRIX AI to refresh your plan.';
+            }
+            if(event&&event.name==='checkout.closed'&&!paymentCompleted){
+              status.textContent='Checkout closed. You can return to ZENTRIX AI.';
+            }
+          }
+        });
+        status.textContent='Opening Paddle secure checkout…';
+        window.Paddle.Checkout.open({transactionId});
+      }catch(error){
+        status.textContent=error.message||'Unable to start secure checkout. Please return to ZENTRIX AI.';
+      }
+    })();
+  </script>
+</body>
+</html>

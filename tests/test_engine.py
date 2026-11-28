@@ -66,3 +66,92 @@ def test_numeric_cross_check_uses_negative_and_fractional_domain_points():
     assert engine.same(engine.P('x'), engine.P('x')) is True
     assert engine.same(engine.P('x'), engine.P('x^2')) is False
     assert engine.same(engine.P('1/3'), engine.P('0.3333333333333333333333333333333333333333')) is True
+
+
+
+def test_multivariable_research_gradient_hessian_and_minimum():
+    from research_engine import analyze_scalar_field
+    result = analyze_scalar_field("x^2 + x*y + y^2", ["x", "y"], {"x": 0, "y": 0})
+    assert result["gradient"] == ["2*x + y", "x + 2*y"]
+    assert result["hessian"] == [["2", "1"], ["1", "2"]]
+    assert result["stationary"] is True
+    assert result["classification"] == "strict_local_minimum"
+    assert result["hessian_eigenvalues"] == [1.0, 3.0]
+
+
+def test_multivariable_research_detects_saddle_and_nonstationary_points():
+    from research_engine import analyze_scalar_field
+    saddle = analyze_scalar_field("x*y", ["x", "y"], {"x": 0, "y": 0})
+    assert saddle["classification"] == "saddle_point"
+    nonstationary = analyze_scalar_field("x^2 + y", ["x", "y"], {"x": 0, "y": 0})
+    assert nonstationary["classification"] == "not_stationary"
+
+
+def test_multivariable_research_quadratic_taylor_and_three_variables():
+    from research_engine import analyze_scalar_field
+    result = analyze_scalar_field("x^2 + y^2 + z^2", ["x", "y", "z"], {"x": 1, "y": 2, "z": 3})
+    assert "h_x**2" in result["quadratic_taylor"]
+    assert result["classification"] == "not_stationary"
+    assert len(result["hessian"]) == 3
+
+
+def test_vector_field_jacobian_divergence_and_conservativity():
+    from research_engine import analyze_vector_field
+    result = analyze_vector_field(["x^2*y", "x*y^2"], ["x", "y"], {"x": 1, "y": 2})
+    assert result["jacobian"] == [["2*x*y", "x**2"], ["y**2", "2*x*y"]]
+    assert result["divergence"] == "4*x*y"
+    assert result["divergence_at_point"] == "8.00000000000000000000000000000"
+    assert result["locally_conservative_test"] is False
+
+
+def test_vector_field_three_dimensional_curl_and_divergence():
+    from research_engine import analyze_vector_field
+    result = analyze_vector_field(["x", "y", "z"], ["x", "y", "z"], {"x": 1, "y": 2, "z": 3})
+    assert result["curl"] == ["0", "0", "0"]
+    assert result["divergence"] == "3"
+    assert result["locally_conservative_test"] is True
+
+
+def test_research_engine_rejects_invalid_variables_points_and_unsafe_input():
+    import pytest
+    from research_engine import analyze_scalar_field, analyze_vector_field
+    with pytest.raises(ValueError):
+        analyze_scalar_field("__import__('os').system('whoami')", ["x"], {"x": 0})
+    with pytest.raises(ValueError):
+        analyze_scalar_field("x+y", ["x", "x"], {"x": 0})
+    with pytest.raises(ValueError):
+        analyze_scalar_field("x+y", ["x", "y"], {"x": 0})
+    with pytest.raises(ValueError):
+        analyze_vector_field(["x"], ["x", "y"], {"x": 0, "y": 0})
+
+
+def test_advanced_matrix_operations():
+    cases = [
+        ('rref of [[1,2,3],[2,4,6]]', 'Matrix([[1, 2, 3], [0, 0, 0]])'),
+        ('nullspace of [[1,2,3],[2,4,6]]', 'Matrix([[-2, -3], [1, 0], [0, 1]])'),
+        ('column space of [[1,2],[2,4]]', 'Matrix([[1], [2]])'),
+        ('row space of [[1,2],[2,4]]', 'Matrix([[1, 2]])'),
+        ('lu of [[4,3],[6,3]]', 'P·A = L·U'),
+        ('qr of [[1,0],[0,1]]', 'Q·R = A'),
+        ('svd of [[1,0],[0,2]]', 'SVD: A = U Σ Vᵀ'),
+        ('condition number of [[1,0],[0,2]]', '2.0'),
+    ]
+    for question, expected in cases:
+        result = engine.solve(question)
+        assert expected in str(result), (question, result)
+
+
+def test_symbolic_matrix_operations_do_not_force_float_conversion():
+    result = engine.solve('rref of [[x,1],[0,x]]')
+    assert 'Could not solve' not in str(result)
+    assert 'x' in str(result)
+
+
+def test_advanced_matrix_dimension_errors_are_clear():
+    result = engine.solve('determinant of [[1,2,3],[4,5,6]]')
+    assert 'square' in str(result).lower()
+
+
+def test_advanced_matrix_operations_reject_empty_matrices_cleanly():
+    result = engine.solve('rref of []')
+    assert 'at least one row' in str(result).lower()
