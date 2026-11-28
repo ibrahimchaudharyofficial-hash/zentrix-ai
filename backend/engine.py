@@ -365,7 +365,7 @@ def h_matrix(r, op, s):
     elif op == 'inv':
         if M.rows != M.cols: raise ValueError('Inverse requires a square matrix.')
         if M.det() == 0: raise ValueError('This matrix is singular (determinant is zero), so it has no inverse.')
-        ans=M.inv(); r.step('Exact inverse', L(ans)); r.done(ans)
+        ans=M.inv(); r.step('Inverse', L(ans), 'The exact inverse satisfies A · A⁻¹ = I.'); r.done(ans)
         r.check('A · A⁻¹ = I', M*ans == sp.eye(M.rows))
         if A is not None: r.check('NumPy inverse agrees', np.allclose(np.linalg.inv(A),np.array(ans.tolist(),float)))
     elif op == 'eig':
