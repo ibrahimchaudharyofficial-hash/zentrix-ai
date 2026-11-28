@@ -128,13 +128,13 @@ def test_research_engine_rejects_invalid_variables_points_and_unsafe_input():
 def test_advanced_matrix_operations():
     cases = [
         ('rref of [[1,2,3],[2,4,6]]', 'Matrix([[1, 2, 3], [0, 0, 0]])'),
-        ('nullspace of [[1,2,3],[2,4,6]]', 'Matrix([[ -2], [1], [0]])'),
+        ('nullspace of [[1,2,3],[2,4,6]]', 'Matrix([[-2, -3], [1, 0], [0, 1]])'),
         ('column space of [[1,2],[2,4]]', 'Matrix([[1], [2]])'),
         ('row space of [[1,2],[2,4]]', 'Matrix([[1, 2]])'),
         ('lu of [[4,3],[6,3]]', 'P·A = L·U'),
         ('qr of [[1,0],[0,1]]', 'Q·R = A'),
         ('svd of [[1,0],[0,2]]', 'SVD: A = U Σ Vᵀ'),
-        ('condition number of [[1,0],[0,2]]', '1.9999999999999996'),
+        ('condition number of [[1,0],[0,2]]', '2.0'),
     ]
     for question, expected in cases:
         result = engine.solve(question)

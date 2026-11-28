@@ -350,7 +350,7 @@ def h_matrix(r, op, s):
     aliases = {'determinant':'det', 'inverse':'inv', 'eigenvalues':'eig', 'transpose':'tra',
                'reduced row echelon form':'rref', 'row-reduced echelon form':'rref',
                'null space':'null', 'nullspace':'null', 'column space':'col', 'row space':'row',
-               'lu decomposition':'lu', 'qr decomposition':'qr', 'singular value decomposition':'svd'}
+               'lu decomposition':'lu', 'qr decomposition':'qr', 'singular value decomposition':'svd', 'rank':'ran'}
     op = aliases.get(op, op)
     r.topic, r.formula = 'Linear algebra · Matrix analysis', r' A\\mathbf{x}=\\mathbf{b}'
     r.step('Input matrix', L(M))
