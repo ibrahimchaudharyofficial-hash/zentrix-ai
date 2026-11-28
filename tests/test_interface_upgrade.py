@@ -55,3 +55,31 @@ def test_command_palette_supports_keyboard_navigation_and_actions():
                     "Focus solver", "Solve current question", "Toggle fullscreen",
                     "Toggle compact sidebar", "No matching commands"):
         assert feature in js
+
+
+def test_adaptive_study_coach_is_installed_and_private():
+    html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
+    script = (ROOT / "backend" / "static" / "zentrix-upgrades.js").read_text(encoding="utf-8")
+    for feature in ("zentrixAdaptiveCoach", "Your adaptive study plan",
+                    "Start recommended practice", "DAILY TARGET",
+                    "active streak", "localDateKey", "topicStats"):
+        assert feature in script
+    assert "zentrix_progress_v1" in script
+    assert "GEMINI_API_KEY" not in script[script.index("function installProgressDashboard"):script.index("function installUpgradeStyles")]
+
+
+def test_connected_ai_scans_questions_automatically_without_provider_prompt():
+    html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "async function recognisePhoto(){if(connectedVisionProviders.size){await readPhotoWithAI();return}return recognisePhotoLocally()}" in html
+    assert "const providers=['gemini','openai','anthropic','openrouter'].filter(id=>connectedVisionProviders.has(id))" in html
+    assert 'for(const provider of providers)' in html
+    assert "if(!confirm('AI math reading sends a compressed copy" not in html
+    reader = html[html.index("async function readPhotoWithAI"):html.index("async function useRecognisedText")]
+    assert "if(!confirm(" not in reader
+
+
+def test_photo_scan_falls_back_to_local_ocr_when_no_ai_or_ai_fails():
+    html = (ROOT / "backend" / "static" / "index.html").read_text(encoding="utf-8")
+    assert "async function recognisePhotoLocally()" in html
+    assert "No AI provider connected: scanning uses local OCR." in html
+    assert "await recognisePhotoLocally()" in html

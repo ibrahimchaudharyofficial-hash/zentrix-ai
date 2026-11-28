@@ -67,11 +67,12 @@ def test_provider_vision_requires_connection(monkeypatch):
     assert 'Connect OpenAI' in r.json()['detail']
 
 
-def test_connected_provider_becomes_selectable_for_photo_ocr():
+def test_connected_provider_is_used_automatically_for_photo_ocr():
     from pathlib import Path
     page = (Path(main.__file__).parent / 'static' / 'index.html').read_text(encoding='utf-8')
-    assert "[...select.options].forEach(o=>{o.disabled=!connectedVisionProviders.has(o.value)})" in page
-    assert "connectedVisionProviders.add(provider);setVisionOcrAvailability()" in page
+    assert "connectedVisionProviders=new Set((j.providers||[]).filter(x=>x.connected).map(x=>x.id))" in page
+    assert "const providers=['gemini','openai','anthropic','openrouter'].filter(id=>connectedVisionProviders.has(id))" in page
+    assert "for(const provider of providers)" in page
 
 
 def test_ai_settings_endpoint_returns_provider_list_shape(monkeypatch):

@@ -78,11 +78,11 @@ def test_ocr_frontend_has_cdn_fallback_retry_and_memory_bounds():
     assert 'ocrWorkerPromise=null' in page
     assert 'maxEdge=2400,maxPixels=4000000' in page
     assert 'OCR pass ${i+1} of ${variants.length}' in page
-    assert 'visionOcrBtn' in page
+    assert 'async function recognisePhoto()' in page
     assert "T.createWorker('eng',1,{logger:ocrLogger,errorHandler:e=>console.warn('ZENTRIX OCR worker:',e)},config)" in page
-    assert 'visionProvider' in page
+    assert "const providers=['gemini','openai','anthropic','openrouter'].filter(id=>connectedVisionProviders.has(id))" in page
     assert 'readPhotoWithAI' in page
-    assert 'AI math reading sends a compressed copy to ' in page
+    assert 'Connected AI could not read this image. Trying local OCR' in page
 
 
 def test_vision_route_rejects_fake_image_bytes(monkeypatch):

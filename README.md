@@ -56,3 +56,46 @@ If you try ZENTRIX AI, share specific feedback: the question you entered, what y
 4. Protect user privacy and avoid collecting unnecessary personal information.
 
 **Created by Ayaan Chaudhry; developed with assistance from ChatGPT.**
+
+
+## Adaptive learning coach
+
+The Learning Studio includes a private adaptive study coach. It reviews locally saved practice attempts, identifies topics with at least two recorded answers, recommends a practice difficulty, tracks a configurable daily target and active-day streak, and starts a recommended practice set. The coach runs entirely in the browser using local progress data; it does not require an AI API key or send study history to a server.
+
+
+## Research mathematics workbench
+
+The Research Lab adds free, local multivariable analysis without requiring an AI provider or API key:
+
+- Scalar fields: exact symbolic gradients and Hessians, Hessian eigenvalue diagnostics, local critical-point classification, and second-order Taylor polynomials.
+- Vector fields: exact Jacobians and divergence, three-dimensional curl, and a local Jacobian-symmetry test for conservative fields.
+- Bounded input validation, finite point checks, selectable 15–80 digit evaluation precision, and explicit notes distinguishing local numerical diagnostics from global proofs.
+
+The research endpoints use the existing safe mathematical parser and SymPy/NumPy. They do not execute arbitrary Python, send expressions to external AI services, or require paid services.
+
+
+## Advanced Matrix Lab
+
+The Matrix Lab supports exact symbolic operations through the solver:
+
+- `determinant of [[...]]`, `inverse of [[...]]`, `eigenvalues of [[...]]`, `rank of [[...]]`, and `transpose of [[...]]`
+- `rref of [[...]]` for reduced row-echelon form and pivot columns
+- `nullspace of [[...]]`, `column space of [[...]]`, and `row space of [[...]]` for basis calculations
+- `lu of [[...]]` and `qr of [[...]]` for exact matrix factorizations
+- `svd of [[...]]` and `condition number of [[...]]` for real numeric matrices
+
+Use nested square-bracket notation, for example `[[1,2],[3,4]]`. SVD and condition-number calculations require real numeric entries; the other listed operations retain symbolic entries where supported. The Matrix Lab also exposes quick-action cards for these operations so users can try each workflow without memorising command syntax. The eigenvalue workflow displays both the characteristic equation and its roots, including algebraic multiplicities. Verification checks are diagnostics, not a substitute for a formal proof.
+
+
+## Graph Studio analysis
+
+Graph Studio can numerically estimate real roots and stationary points over the selected x-interval, classify turning points using the second derivative, and display the first two symbolic derivatives and y-intercept. The analysis is explicitly labelled approximate: it uses a bounded sign-change search and is not a proof or a complete root-isolation method. Constant and identically-zero functions are handled separately.
+
+
+## Exam Centre
+
+Practice tests can be run with a 60-second-per-question limit, a 90-second-per-question limit, or without a timer. Timed sessions finish automatically when the clock reaches zero. The result screen includes an answer review with the selected answer, correct answer and worked explanation; unanswered questions are included in the review. The question bank includes arithmetic, algebra, geometry, trigonometry, statistics, calculus, matrices and probability.
+
+## Proof Auditor and misconception feedback
+
+The Proof Auditor checks adjacent algebra lines using symbolic comparison and polynomial solution-set checks. When a transition appears invalid, it can add a cautious pattern-based misconception suggestion and a short practice prompt. These suggestions include a confidence label and are learning hints, not definitive claims about a student's reasoning.

@@ -28,6 +28,7 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 import engine as E
+from research_engine import analyze_scalar_field, analyze_vector_field
 from billing import router as billing_router
 
 app = FastAPI(title='Zentrix AI', version='4.1.1', description='Mathematics Without Limits — created by M.Ayaan Chaudhry')
@@ -113,30 +114,136 @@ TUTOR_LESSONS = {
 }
 
 
+TUTOR_EXAMPLES = {
+    'algebra': 'Solve 2x + 3 = 11: subtract 3 to get 2x = 8, then divide by 2 to get x = 4. Substitute 4 back into the original equation: 2(4) + 3 = 11.',
+    'calculus': 'For f(x) = x^3, the power rule gives f\u2032(x) = 3x^2. At x = 2, the slope is 12.',
+    'geometry': 'A triangle with base 8 cm and perpendicular height 5 cm has area (1/2)(8)(5) = 20 cm^2.',
+    'trigonometry': 'In a right triangle, if the opposite side is 3 and the hypotenuse is 5, then sin(theta) = 3/5. Check whether the angle is being measured in degrees or radians.',
+    'statistics': 'For data 2, 4, 4, 8, the mean is 18/4 = 4.5, the median is 4, and the mode is 4.',
+    'probability': 'A fair six-sided die has one favourable outcome for rolling a 4, so P(4) = 1/6.',
+    'matrices': 'For A = [[1,2],[3,4]], det(A) = 1*4 - 2*3 = -2, so A is invertible.',
+    'arithmetic': 'Evaluate 8 + 4*3 by multiplying first: 8 + 12 = 20.',
+    'physics': 'For a 2 kg object accelerating at 3 m/s^2, Newton\u2019s second law gives F = ma = 6 N.'
+}
+TUTOR_MISTAKES = {
+    'algebra': 'Changing only one side of an equation. Apply the same operation to both sides and check by substitution.',
+    'calculus': 'Forgetting the chain rule or the constant of integration. State the variable and include +C for indefinite integrals.',
+    'geometry': 'Using a slanted side instead of the perpendicular height in a triangle-area calculation. Keep units consistent.',
+    'trigonometry': 'Mixing up opposite, adjacent and hypotenuse, or confusing degree mode with radians.',
+    'statistics': 'Dropping repeated values when finding the mean, median or mode. Sort the complete data set first.',
+    'probability': 'Assuming outcomes are equally likely when they are not. Check the sample space before using a simple ratio.',
+    'matrices': 'Multiplying matrices in the wrong order or assuming AB = BA. Check dimensions before multiplying.',
+    'arithmetic': 'Performing addition before multiplication when there are no grouping brackets. Follow order of operations.',
+    'physics': 'Substituting values before checking units. Convert to consistent SI units and state the final unit.'
+}
+TUTOR_PRACTICE = {
+    'algebra': 'Try solving 3x - 4 = 11.',
+    'calculus': 'Differentiate f(x) = 5x^4.',
+    'geometry': 'Find the area of a triangle with base 10 cm and height 6 cm.',
+    'trigonometry': 'In a right triangle, the opposite side is 5 and hypotenuse is 13. Find sin(theta).',
+    'statistics': 'Find the mean and median of 3, 5, 5, 7, 10.',
+    'probability': 'A fair coin is tossed twice. What is the probability of two heads?',
+    'matrices': 'Find the determinant of [[2,1],[5,3]].',
+    'arithmetic': 'Evaluate 18 - 2*(3 + 4).',
+    'physics': 'Find the force on a 4 kg object accelerating at 2 m/s^2.'
+}
+
+
+def _tutor_ai_answer(provider: str, prompt: str) -> str:
+    """Call one already-connected provider; never stores prompts or responses."""
+    cfg = AI_PROVIDER_CONFIG[provider]
+    key = os.getenv(cfg['key_env'])
+    if not key:
+        raise RuntimeError('provider is not connected')
+    model = os.getenv(cfg['model_env'], cfg['default_model']).strip()
+    if not re.fullmatch(r'[A-Za-z0-9._:/-]{2,120}', model):
+        raise RuntimeError('configured model identifier is invalid')
+    if provider == 'gemini':
+        url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+        body = {'contents':[{'role':'user','parts':[{'text':prompt}]}],
+                'generationConfig':{'temperature':0.2,'maxOutputTokens':1200}}
+        headers = {'x-goog-api-key':key,'content-type':'application/json'}
+    elif provider == 'anthropic':
+        url = 'https://api.anthropic.com/v1/messages'
+        body = {'model':model,'max_tokens':1200,'temperature':0.2,
+                'messages':[{'role':'user','content':prompt}]}
+        headers = {'x-api-key':key,'anthropic-version':'2023-06-01','content-type':'application/json'}
+    else:
+        url = 'https://api.openai.com/v1/chat/completions' if provider == 'openai' else 'https://openrouter.ai/api/v1/chat/completions'
+        body = {'model':model,'messages':[{'role':'user','content':prompt}],
+                'max_tokens':1200,'temperature':0.2}
+        headers = {'Authorization':'Bearer '+key,'content-type':'application/json'}
+        if provider == 'openrouter':
+            headers['X-Title'] = 'ZENTRIX AI'
+    request = urllib.request.Request(url,data=json.dumps(body).encode('utf-8'),headers=headers,method='POST')
+    try:
+        with urllib.request.urlopen(request,timeout=16) as response:
+            data = json.load(response)
+    except urllib.error.HTTPError as exc:
+        if exc.code in (401,403):
+            raise RuntimeError('provider rejected the saved API key') from None
+        if exc.code == 429:
+            raise RuntimeError('provider quota or rate limit reached') from None
+        if exc.code == 404:
+            raise RuntimeError('configured model was not found') from None
+        raise RuntimeError(f'provider request failed (HTTP {exc.code})') from None
+    except Exception as exc:
+        raise RuntimeError(f'provider connection failed ({type(exc).__name__})') from None
+    if provider == 'gemini':
+        parts = (data.get('candidates') or [{}])[0].get('content',{}).get('parts',[])
+        answer = '\n'.join(part.get('text','') for part in parts if isinstance(part,dict))
+    elif provider == 'anthropic':
+        answer = '\n'.join(part.get('text','') for part in data.get('content',[]) if isinstance(part,dict))
+    else:
+        choices = data.get('choices') or []
+        content = choices[0].get('message',{}).get('content','') if choices else ''
+        answer = '\n'.join(part.get('text','') for part in content if isinstance(part,dict)) if isinstance(content,list) else content
+    answer = (answer or '').strip()
+    if not answer:
+        raise RuntimeError('provider returned an empty explanation')
+    return answer
+
+
+def _offline_tutor(topic: str, lesson: str, question: str) -> str:
+    example = TUTOR_EXAMPLES.get(topic, 'Identify the known values, select a relevant definition, and work through one operation at a time.')
+    mistake = TUTOR_MISTAKES.get(topic, 'Skipping definitions and assumptions. Write down what is known and check the final result.')
+    practice = TUTOR_PRACTICE.get(topic, 'Create a small example, solve it carefully, and verify the result.')
+    parts = ['CONCEPT\n' + lesson, 'WORKED EXAMPLE\n' + example,
+             'COMMON MISTAKE\n' + mistake, 'TRY THIS\n' + practice]
+    if question:
+        parts.append('YOUR QUESTION\n' + question + '\nApproach: identify the requested quantity, list the known information, choose the relevant rule, show each algebraic step, and check the result. Use Solver for exact computation and verification.')
+    return '\n\n'.join(parts)
+
+
 @app.post('/api/tutor/explain')
 def tutor_explain(request_data: TutorRequest):
     topic = request_data.topic.strip().lower()
     lesson = TUTOR_LESSONS.get(topic, 'Break the problem into smaller steps. Identify what is known, what is unknown, and which definition or formula connects them. Work symbolically first, substitute values carefully, then check the result.')
     question = request_data.question.strip()
-    key = None if _public_mode() else os.getenv('GEMINI_API_KEY')
-    if key and question:
-        model = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash-lite').strip()
-        if re.fullmatch(r'[A-Za-z0-9._-]{1,100}', model):
-            prompt = ('You are a careful mathematics tutor. Explain the concept in clear student-friendly steps. '
-                      'Do not claim unverified numerical answers; if a calculation is needed, show the method and tell the student to verify it with the local solver. '
-                      'Keep the response concise. Topic: ' + topic + '. Student request: ' + question)
-            payload = json.dumps({'contents':[{'role':'user','parts':[{'text':prompt}]}], 'generationConfig':{'temperature':0.2,'maxOutputTokens':700}}).encode('utf-8')
-            req = urllib.request.Request(f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent', data=payload, headers={'x-goog-api-key':key,'content-type':'application/json'}, method='POST')
+    prompt = (
+        'You are the ZENTRIX mathematics tutor. Teach the student, do not merely give a final answer. '
+        'Explain the underlying concept, show a clear sequence of mathematical steps, include one worked example, '
+        'identify a common misconception, and end with one short practice question. Adapt the depth to the topic. '
+        'Keep notation readable. Never invent missing information, never claim a calculation is independently verified, '
+        'and clearly state assumptions or uncertainty. If the student asks a specific question, address it directly. '
+        'Topic: ' + topic + '. Student question: ' + (question or 'Give me a clear lesson with an example.')
+    )
+    provider_errors = []
+    if not _public_mode():
+        for provider in ('gemini','openai','anthropic','openrouter'):
+            if not os.getenv(AI_PROVIDER_CONFIG[provider]['key_env']):
+                continue
             try:
-                with urllib.request.urlopen(req, timeout=10) as response:
-                    data = json.load(response)
-                parts = data.get('candidates',[{}])[0].get('content',{}).get('parts',[])
-                answer = '\n'.join(part.get('text','') for part in parts).strip()
-                if answer:
-                    return {'topic':topic, 'mode':'optional AI tutor', 'explanation':answer, 'verified_calculation':False}
-            except Exception:
-                pass
-    return {'topic':topic, 'mode':'offline tutor', 'explanation':lesson + (('\n\nFor your question: ' + question + '\nUse the local solver for exact calculations, then compare each step with the method above.') if question else ''), 'verified_calculation':False}
+                answer = _tutor_ai_answer(provider,prompt)
+                return {'topic':topic,'mode':'optional AI tutor','provider':AI_PROVIDER_CONFIG[provider]['label'],
+                        'explanation':answer,'verified_calculation':False,'stored':False,'provider_fallbacks':provider_errors}
+            except Exception as exc:
+                provider_errors.append(AI_PROVIDER_CONFIG[provider]['label'] + ': ' + str(exc))
+    explanation = _offline_tutor(topic,lesson,question)
+    return {'topic':topic,'mode':'offline tutor','provider':None,'explanation':explanation,
+            'verified_calculation':False,'stored':False,
+            'provider_fallbacks':provider_errors,
+            'fallback_note':'Connected AI was unavailable; the free offline lesson is shown.' if provider_errors else None}
 
 
 class ArcadeAttempt(BaseModel):
@@ -619,8 +726,8 @@ def capabilities():
                     'class10_trigonometry', 'class10_circle_calculations',
                     'class10_information_handling', 'class10_probability',
                     'geometry_mensuration', 'coordinate_geometry', 'grouped_statistics',
-                    'combinatorics', 'unit_conversion', 'algebraic_identity_proof', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'photo_question_ocr_client_side', 'introductory_physics_numericals', 'local_practice_generator', 'symbolic_answer_verification'],
-        'features': ['optional_gemini_vision_ocr', 'research_calculus_lab', 'symbolic_identity_verification', 'high_precision_evaluation', 'multi_pass_photo_ocr', 'printable_research_reports', 'adaptive_arcade_difficulty', 'local_learning_profile', 'step_by_step', 'symbolic_verification', 'mathematical_proof_auditor', 'misconception_detection', 'numerical_checks', '2d_plotting', 'geometry_calculations', 'grouped_statistics', 'combinatorics', 'unit_conversion', 'algebraic_identity_check', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'generated_geometry_diagrams', 'browser_based_photo_ocr', 'physics_formula_calculator', 'practice_quizzes', 'exact_answer_comparison'],
+                    'combinatorics', 'unit_conversion', 'algebraic_identity_proof', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'photo_question_ocr_client_side', 'introductory_physics_numericals', 'local_practice_generator', 'symbolic_answer_verification', 'multivariable_calculus', 'vector_calculus', 'critical_point_classification', 'jacobian_divergence_curl'],
+        'features': ['optional_gemini_vision_ocr', 'research_calculus_lab', 'symbolic_identity_verification', 'high_precision_evaluation', 'multi_pass_photo_ocr', 'printable_research_reports', 'adaptive_arcade_difficulty', 'local_learning_profile', 'step_by_step', 'symbolic_verification', 'mathematical_proof_auditor', 'misconception_detection', 'numerical_checks', '2d_plotting', 'geometry_calculations', 'grouped_statistics', 'combinatorics', 'unit_conversion', 'algebraic_identity_check', 'guided_word_problem_models', 'ladder_right_triangle_word_problems', 'rectangle_area_perimeter_word_problems', 'generated_geometry_diagrams', 'browser_based_photo_ocr', 'physics_formula_calculator', 'practice_quizzes', 'exact_answer_comparison', 'multivariable_research_workbench', 'symbolic_gradient_hessian', 'local_critical_point_diagnostics', 'vector_field_jacobian_divergence_curl'],
         'online_ai_required': False,
         'offline_math': True,
     }
@@ -821,6 +928,103 @@ def plot(p: Plot):
         raise HTTPException(400, 'Cannot plot this expression. Check its syntax and supported functions.')
 
 
+@app.post('/api/plot/analyze')
+def analyze_plot(p: Plot):
+    """Return bounded numerical roots and stationary points plus symbolic derivatives."""
+    if not math.isfinite(p.xmin) or not math.isfinite(p.xmax):
+        raise HTTPException(400, 'Plot bounds must be finite numbers.')
+    if p.xmin >= p.xmax or p.xmax - p.xmin > 100000:
+        raise HTTPException(400, 'Choose an increasing plotting interval no wider than 100,000 units.')
+    try:
+        expression = E.P(p.expr)
+        if expression.free_symbols - {E.x}:
+            raise ValueError('Only x may be used as the graph variable.')
+        derivative = sp.simplify(sp.diff(expression, E.x))
+        second = sp.simplify(sp.diff(derivative, E.x))
+        fn = sp.lambdify(E.x, expression, modules=['numpy'])
+        dfn = sp.lambdify(E.x, derivative, modules=['numpy'])
+        d2fn = sp.lambdify(E.x, second, modules=['numpy'])
+
+        def evaluate(function, point):
+            try:
+                value = complex(np.asarray(function(float(point))).item())
+                if not (math.isfinite(value.real) and math.isfinite(value.imag)) or abs(value.imag) > 1e-8:
+                    return float('nan')
+                return float(value.real)
+            except Exception:
+                return float('nan')
+
+        def locate_zeros(function, samples=480):
+            grid = np.linspace(p.xmin, p.xmax, samples + 1)
+            values = [evaluate(function, point) for point in grid]
+            finite = [abs(value) for value in values if math.isfinite(value)]
+            scale = max(finite, default=0.0)
+            tolerance = max(1e-300, 1e-10 * scale)
+            found = []
+            def add(point):
+                if p.xmin - 1e-9 <= point <= p.xmax + 1e-9 and not any(abs(point-old) < 1e-5 for old in found):
+                    found.append(float(point))
+            for i in range(samples):
+                left, right = float(grid[i]), float(grid[i+1])
+                fl, fr = values[i], values[i+1]
+                if math.isfinite(fl) and abs(fl) <= tolerance:
+                    add(left)
+                if not (math.isfinite(fl) and math.isfinite(fr)) or fl == 0 or fr == 0 or (fl > 0) == (fr > 0):
+                    continue
+                lo, hi, flo = left, right, fl
+                valid = True
+                for _ in range(48):
+                    mid = (lo + hi) / 2
+                    fm = evaluate(function, mid)
+                    if not math.isfinite(fm):
+                        valid = False
+                        break
+                    if abs(fm) <= tolerance:
+                        lo = hi = mid
+                        break
+                    if (flo > 0) == (fm > 0):
+                        lo, flo = mid, fm
+                    else:
+                        hi = mid
+                root = (lo + hi) / 2
+                if valid and abs(evaluate(function, root)) <= max(tolerance * 100, 1e-7):
+                    add(root)
+            if math.isfinite(values[-1]) and abs(values[-1]) <= tolerance:
+                add(float(grid[-1]))
+            return sorted(found)
+
+        identically_zero = sp.simplify(expression) == 0
+        constant_function = sp.simplify(derivative) == 0
+        roots = [] if identically_zero else [{'x': round(root, 8), 'y': 0.0} for root in locate_zeros(fn)]
+        stationary = []
+        for point in ([] if constant_function else locate_zeros(dfn)):
+            curvature = evaluate(d2fn, point)
+            kind = 'local minimum' if curvature > 0 else 'local maximum' if curvature < 0 else 'stationary / flat'
+            stationary.append({'x': round(point, 8), 'y': round(evaluate(fn, point), 8), 'kind': kind})
+        if not identically_zero:
+            function_scale = max((abs(evaluate(fn, point)) for point in np.linspace(p.xmin, p.xmax, 65) if math.isfinite(evaluate(fn, point))), default=0.0)
+            root_tolerance = max(1e-300, 1e-10 * function_scale)
+            for point in stationary:
+                if abs(point['y']) <= root_tolerance and not any(abs(point['x'] - root['x']) < 1e-5 for root in roots):
+                    roots.append({'x': point['x'], 'y': 0.0})
+            roots.sort(key=lambda item: item['x'])
+        y_intercept = evaluate(fn, 0) if p.xmin <= 0 <= p.xmax else None
+        return {
+            'expression': str(expression),
+            'derivative': str(derivative),
+            'second_derivative': str(second),
+            'roots': roots[:30],
+            'critical_points': stationary[:30],
+            'y_intercept': y_intercept if y_intercept is not None and math.isfinite(y_intercept) else None,
+            'identically_zero': identically_zero,
+            'constant_function': constant_function,
+            'method': 'Numerical sign-change search over 480 intervals; approximate results, not a proof.',
+            'interval': [p.xmin, p.xmax],
+        }
+    except Exception:
+        raise HTTPException(400, 'Cannot analyse this expression. Check its syntax and supported functions.')
+
+
 
 class Plot3D(BaseModel):
     expr: str = Field(min_length=1, max_length=300)
@@ -932,6 +1136,40 @@ def research_analyze(data: ResearchRequest):
         raise
     except Exception as exc:
         raise HTTPException(400, 'Unable to analyse this expression: ' + str(exc)[:180])
+
+
+
+
+class MultivariableResearchRequest(BaseModel):
+    expression: str = Field(min_length=1, max_length=1200)
+    variables: list[str] = Field(min_length=1, max_length=5)
+    point: dict[str, float]
+    precision: int = Field(default=30, ge=15, le=80)
+
+
+class VectorFieldResearchRequest(BaseModel):
+    components: list[str] = Field(min_length=1, max_length=5)
+    variables: list[str] = Field(min_length=1, max_length=5)
+    point: dict[str, float]
+    precision: int = Field(default=30, ge=15, le=80)
+
+
+@app.post('/api/research/multivariable')
+def research_multivariable(data: MultivariableResearchRequest):
+    """Exact gradient/Hessian analysis with a numerical local critical-point test."""
+    try:
+        return analyze_scalar_field(data.expression, data.variables, data.point, data.precision)
+    except Exception as exc:
+        raise HTTPException(400, 'Multivariable analysis failed: ' + str(exc)[:180])
+
+
+@app.post('/api/research/vector-field')
+def research_vector_field(data: VectorFieldResearchRequest):
+    """Symbolic Jacobian, divergence and 3D curl for a real vector field."""
+    try:
+        return analyze_vector_field(data.components, data.variables, data.point, data.precision)
+    except Exception as exc:
+        raise HTTPException(400, 'Vector-field analysis failed: ' + str(exc)[:180])
 
 
 class IdentityProofRequest(BaseModel):
