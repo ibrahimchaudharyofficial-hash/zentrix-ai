@@ -85,3 +85,8 @@ The Matrix Lab supports exact symbolic operations through the solver:
 - `svd of [[...]]` and `condition number of [[...]]` for real numeric matrices
 
 Use nested square-bracket notation, for example `[[1,2],[3,4]]`. SVD and condition-number calculations require real numeric entries; the other listed operations retain symbolic entries where supported. The Matrix Lab also exposes quick-action cards for these operations so users can try each workflow without memorising command syntax. The eigenvalue workflow displays both the characteristic equation and its roots, including algebraic multiplicities. Verification checks are diagnostics, not a substitute for a formal proof.
+
+
+## Graph Studio analysis
+
+Graph Studio can numerically estimate real roots and stationary points over the selected x-interval, classify turning points using the second derivative, and display the first two symbolic derivatives and y-intercept. The analysis is explicitly labelled approximate: it uses a bounded sign-change search and is not a proof or a complete root-isolation method. Constant and identically-zero functions are handled separately.

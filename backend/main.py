@@ -958,8 +958,8 @@ def analyze_plot(p: Plot):
             grid = np.linspace(p.xmin, p.xmax, samples + 1)
             values = [evaluate(function, point) for point in grid]
             finite = [abs(value) for value in values if math.isfinite(value)]
-            scale = max([1.0] + finite)
-            tolerance = 1e-10 * scale
+            scale = max(finite, default=0.0)
+            tolerance = max(1e-300, 1e-10 * scale)
             found = []
             def add(point):
                 if p.xmin - 1e-9 <= point <= p.xmax + 1e-9 and not any(abs(point-old) < 1e-5 for old in found):
@@ -993,9 +993,11 @@ def analyze_plot(p: Plot):
                 add(float(grid[-1]))
             return sorted(found)
 
-        roots = [{'x': round(root, 8), 'y': 0.0} for root in locate_zeros(fn)]
+        identically_zero = sp.simplify(expression) == 0
+        constant_function = sp.simplify(derivative) == 0
+        roots = [] if identically_zero else [{'x': round(root, 8), 'y': 0.0} for root in locate_zeros(fn)]
         stationary = []
-        for point in locate_zeros(dfn):
+        for point in ([] if constant_function else locate_zeros(dfn)):
             curvature = evaluate(d2fn, point)
             kind = 'local minimum' if curvature > 1e-7 else 'local maximum' if curvature < -1e-7 else 'stationary / flat'
             stationary.append({'x': round(point, 8), 'y': round(evaluate(fn, point), 8), 'kind': kind})
@@ -1007,6 +1009,8 @@ def analyze_plot(p: Plot):
             'roots': roots[:30],
             'critical_points': stationary[:30],
             'y_intercept': y_intercept if y_intercept is not None and math.isfinite(y_intercept) else None,
+            'identically_zero': identically_zero,
+            'constant_function': constant_function,
             'method': 'Numerical sign-change search over 480 intervals; approximate results, not a proof.',
             'interval': [p.xmin, p.xmax],
         }

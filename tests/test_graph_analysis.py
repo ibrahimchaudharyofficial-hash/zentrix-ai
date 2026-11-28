@@ -34,3 +34,22 @@ def test_graph_studio_exposes_analysis_action():
     assert 'Analyse function' in html
     assert '/api/plot/analyze' in html
     assert 'graphAnalysis' in html
+
+
+def test_graph_analysis_handles_constant_and_zero_functions():
+    client = TestClient(main.app)
+    constant = client.post('/api/plot/analyze', json={'expr': '5', 'xmin': -2, 'xmax': 2}).json()
+    assert constant['constant_function'] is True
+    assert constant['critical_points'] == []
+    assert constant['roots'] == []
+    zero = client.post('/api/plot/analyze', json={'expr': '0', 'xmin': -2, 'xmax': 2}).json()
+    assert zero['identically_zero'] is True
+    assert zero['roots'] == []
+
+
+def test_graph_analysis_uses_scale_aware_root_tolerance():
+    client = TestClient(main.app)
+    response = client.post('/api/plot/analyze', json={'expr': '1e-12*(x-1)', 'xmin': -2, 'xmax': 2})
+    assert response.status_code == 200
+    assert len(response.json()['roots']) == 1
+    assert abs(response.json()['roots'][0]['x'] - 1) < 1e-5
