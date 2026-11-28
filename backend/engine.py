@@ -1048,7 +1048,6 @@ def solve(q):
     r = Res(q); r.ans, r.text = r'\text{Could not solve this reliably}', 'unsolved'
     r.warn.append(f'I could not parse or solve this reliably ({err}). Rephrase it, e.g. "solve x^2-4=0", or configure GEMINI_API_KEY for optional natural-language interpretation.')
     return r.out()
-       ('solve', r'^solve\s+(.+)$')]
 h_factor = lambda r, e: h_alg(r, 'factor', e); h_expand = lambda r, e: h_alg(r, 'expand', e); h_simplify = lambda r, e: h_alg(r, 'simplify', e)
 
 def h_partial_route(r, w, e, vn):
