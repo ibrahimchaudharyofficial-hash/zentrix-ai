@@ -807,7 +807,246 @@ def h_trig(r, raw):
 CMD = [('complex', r'^(conjugate|modulus|real part|imaginary part|argument)\s+(.+)$'), ('vector', r'^(vector add|vector subtract|dot product|magnitude|unit vector|angle between)\s+(.+)$'), ('statistics', r'^(mean|median|mode|range|variance|sample variance|standard deviation)\s+(?:of\s+)?(.+)$'), ('probability', r'^probability\s+(?:of\s+)?(.+)$'), ('circle', r'^(circumference|circle area|arc length|sector area|chord length)\s+(.+)$'), ('function', r'^(?:evaluate )?function\s+(.+)$'), ('trig', r'^(?:trig simplify|trigonometry)\s+(.+)$'), ('inequality', r'^solve\s+(.+?(?:<=|>=|<|>).+)$'), ('series', r'^series\s+(.+)$'), ('partial', r'^(?:(second|third)\s+)?(?:partial derivative(?: of)?|differentiate partially)\s+(.+?)\s+with respect to\s+([a-z])$'), ('ode', r"^(?:solve|dsolve)\s+(.*y\s*'.*)$"), ('diff', r'^(?:(second|third)\s+)?(?:derivative(?: of)?|differentiate|diff|d/dx(?: of)?)\s+(.+)$'),
        ('int', r'^(?:integrate|integral(?: of)?|antiderivative(?: of)?)\s+(.+)$'), ('limit', r'^lim(?:it)?\s+(.+)$'),
        ('factor', r'^factor(?:i[sz]e)?\s+(.+)$'), ('expand', r'^expand\s+(.+)$'), ('simplify', r'^simplify\s+(.+)$'),
-       ('matrix', r'^(det(?:erminant)?|inverse|eigenvalues|rank|transpose)(?: of)?\s+(.+)$'), ('nt', r'^(gcd|lcm|isprime|factorint|prime factors?(?: of)?)\s*\(?([\d,\s]+)\)?$'),
+       ('matrix', r'^(det(?:erminant)?|inverse|eigenvalues|rank|transpose|rref|reduced row-echelon form|null ?space|column space|row space|lu(?: decomposition)?|qr(?: decomposition)?|svd|condition number)(?: of)?\s+(.+), ('nt', r'^(gcd|lcm|isprime|factorint|prime factors?(?: of)?)\s*\(?([\d,\s]+)\)?$'),
+       ('solve', r'^solve\s+(.+)$')]
+h_factor = lambda r, e: h_alg(r, 'factor', e); h_expand = lambda r, e: h_alg(r, 'expand', e); h_simplify = lambda r, e: h_alg(r, 'simplify', e)
+
+def h_partial_route(r, w, e, vn):
+    return h_partial(r, vn, e, {'second': '2', 'third': '3'}.get((w or '').lower(), '1'))
+
+def route(r, q):
+    q = q.strip()
+    m=re.match(r'^(pythagoras|heron area|triangle area|distance|midpoint|slope|rectangle area|rectangle perimeter|parallelogram area|cube volume|cube surface area|cuboid volume|cuboid surface area|cylinder volume|cylinder surface area|cone volume|sphere volume|sphere surface area)\s+(.+)$',q,re.I)
+    if m: return h_geometry(r,m.group(1).lower(),m.group(2))
+    m=re.match(r'^(permutation|combination)\s+(.+)$',q,re.I)
+    if m: return h_counting(r,m.group(1).lower(),m.group(2))
+    m=re.match(r'^grouped (?:statistics|mean)\s+(.+)$',q,re.I)
+    if m: return h_grouped_stats(r,m.group(1))
+    m=re.match(r'^convert\s+(.+)$',q,re.I)
+    if m: return h_unit_convert(r,m.group(1))
+    m=re.match(r'^prove\s+(.+)$',q,re.I)
+    if m: return h_proof(r,m.group(1))
+    m=re.match(r'^word problem:?\s*(.+)$',q,re.I)
+    if m: return h_word(r,m.group(1))
+    m=re.match(r'^physics\s+(.+)$',q,re.I)
+    if m: return h_physics(r,m.group(1))
+    # Friendly named-matrix workflow: definitions followed by A-B / A+B / A*B.
+    # This is handled locally, so matrix arithmetic never depends on an AI provider.
+    definitions = dict((name.upper(), literal) for name, literal in re.findall(
+        r'^\s*([A-Za-z])\s*=\s*(\[\[.*?\]\])\s*$', q, re.M))
+    operation = re.search(r'(?:find|calculate|compute|evaluate)?\s*([A-Za-z])\s*([+*\-])\s*([A-Za-z])\s*$', q, re.I)
+    if operation and len(definitions) >= 2:
+        left_name, symbol, right_name = operation.groups()
+        left, right = definitions.get(left_name.upper()), definitions.get(right_name.upper())
+        if left is not None and right is not None:
+            op = {'+': 'add', '-': 'subtract', '*': 'multiply'}[symbol]
+            return h_matrix_binary(r, op, left, right)
+    m = re.match(r'^matrix\s+(add|subtract|multiply)\s+(\[\[.*?\]\])\s+and\s+(\[\[.*?\]\])$', q, re.I)
+    if m: return h_matrix_binary(r, *m.groups())
+    m = re.match(r'^(conjugate|modulus|real part|imaginary part|argument)\s+(.+)$', q, re.I)
+    if m: return h_complex(r, m.group(1).lower(), m.group(2))
+    m = re.match(r'^(vector add|vector subtract|dot product|magnitude|unit vector|angle between)\s+(.+)$', q, re.I)
+    if m:
+        op, rest = m.groups(); op=op.lower(); op={'vector add':'add','vector subtract':'subtract','dot product':'dot','unit vector':'unit','angle between':'angle'}.get(op,op)
+        parts = re.split(r'\s+and\s+', rest, maxsplit=1, flags=re.I)
+        return h_vector(r, op, parts[0], parts[1] if len(parts)>1 else None)
+    m = re.match(r'^(mean|median|mode|range|variance|sample variance|standard deviation)\s+(?:of\s+)?(.+)$', q, re.I)
+    if m: return h_statistics(r, m.group(1).lower(), m.group(2))
+    m = re.match(r'^probability\s+(?:of\s+)?(.+)$', q, re.I)
+    if m: return h_probability(r, m.group(1))
+    m = re.match(r'^(circumference|circle area|arc length|sector area|chord length)\s+(.+)$', q, re.I)
+    if m: return h_circle(r, m.group(1).lower(), m.group(2))
+    m = re.match(r'^(?:evaluate )?function\s+(.+)$', q, re.I)
+    if m: return h_function(r, m.group(1))
+    m = re.match(r'^(?:trig simplify|trigonometry)\s+(.+)$', q, re.I)
+    if m: return h_trig(r, m.group(1))
+    sm = re.match(r'^sum\s+(.+?)\s+from\s+([a-z])\s*=\s*(-?\d+)\s+to\s+(-?\d+)$', q.strip(), re.I)
+    if sm: return h_sum(r, *sm.groups())
+    for name, pat in CMD:
+        m = re.match(pat, q.strip(), re.I)
+        if m: return (h_partial_route if name == 'partial' else globals()['h_' + name])(r, *m.groups())
+    return h_solve(r, q) if '=' in q else h_eval(r, q)
+
+def llm_command(q):
+    """Use Gemini only to translate wording into a safe command; SymPy performs all maths."""
+    key = os.getenv('GEMINI_API_KEY', '').strip()
+    if not key:
+        return None
+    model = os.getenv('GEMINI_MODEL', 'gemini-3.5-flash-lite').strip()
+    if not re.fullmatch(r'[A-Za-z0-9._-]{1,100}', model):
+        raise ValueError('Invalid GEMINI_MODEL setting.')
+    prompt = (
+        'Translate the user mathematics request into exactly ONE command for the Zentrix SymPy solver. '
+        'Never solve it, explain it, use markdown, or return anything except the command. '
+        'Supported forms: solve <equation>; derivative of <expression>; integrate <expression>; '
+        'limit <expression> as x-><value>; factor <expression>; expand <expression>; simplify <expression>; '
+        'determinant of [[...]]; inverse of [[...]]; eigenvalues of [[...]]; rank of [[...]]; rref of [[...]]; nullspace of [[...]]; column space of [[...]]; row space of [[...]]; LU/QR/SVD decomposition; condition number. '
+        'Physics commands: physics force mass=... acceleration=...; physics work force=... distance=...; '
+        'physics power work=... time=...; physics ohms voltage=... resistance=...; '
+        'physics kinetic energy mass=... velocity=...; physics potential energy mass=... height=...; '
+        'physics momentum mass=... velocity=...; physics density mass=... volume=...; '
+        'physics pressure force=... area=...; physics speed distance=... time=...; '
+        'physics acceleration initial_velocity=... final_velocity=... time=.... '
+        'For two matrices use exactly: matrix add [[...]] and [[...]], matrix subtract [[...]] and [[...]], '
+        'or matrix multiply [[...]] and [[...]]. If the input defines A and B on separate lines and asks A-B, '
+        'copy both matrix literals into matrix subtract [[...]] and [[...]]. Preserve every entry and sign. '
+        'Use * for multiplication and ** for powers. Do not invent missing information. '
+        'If the request cannot be expressed, return UNSUPPORTED.\n\nUser request:\n' + q
+    )
+    body = json.dumps({
+        'contents': [{'role': 'user', 'parts': [{'text': prompt}]}],
+        'generationConfig': {'temperature': 0, 'maxOutputTokens': 220},
+    }).encode('utf-8')
+    url = f'https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent'
+    req = urllib.request.Request(url, data=body, headers={
+        'x-goog-api-key': key,
+        'content-type': 'application/json',
+    }, method='POST')
+    try:
+        with urllib.request.urlopen(req, timeout=15) as response:
+            data = json.load(response)
+    except Exception as exc:
+        # Do not expose the key or provider response body in the UI/log message.
+        raise RuntimeError(f'Gemini request failed ({type(exc).__name__}).') from None
+    try:
+        command = data['candidates'][0]['content']['parts'][0]['text'].strip()
+    except (KeyError, IndexError, TypeError):
+        raise RuntimeError('Gemini returned no usable command.') from None
+    command = re.sub(r'^```(?:\w+)?\s*|\s*```$', '', command).strip()
+    command = command.splitlines()[0].strip()
+    if command.upper() == 'UNSUPPORTED' or not command or len(command) > 1000:
+        return None
+    return command
+
+def h_ladder_word_problem(q):
+    """Solve the common ladder-against-wall right-triangle word problem and emit a scaled diagram spec."""
+    if not re.search(r'\b(ladder|wall)\b', q, re.I) or not re.search(r'\b(wall|ground|foot|base)\b', q, re.I):
+        return None
+    # Recognise the two explicitly stated lengths, in their order of appearance.
+    vals = re.findall(r'(?<![A-Za-z])(-?\d+(?:\.\d+)?)\s*(?:m|metres?|meters?|cm|centimetres?|centimeters?|ft|feet)?\b', q, re.I)
+    if len(vals) < 2:
+        return None
+    a, b = map(sp.Rational, vals[:2])
+    if a <= 0 or b <= 0:
+        return None
+    # In a ladder problem, the ladder length is the hypotenuse and the distance
+    # from wall is the horizontal leg. The usual wording gives them in that order.
+    hyp, base = max(a, b), min(a, b)
+    if base >= hyp:
+        return None
+    height2 = sp.simplify(hyp**2 - base**2)
+    height = sp.sqrt(height2)
+    r = Res(q); r.topic = 'Geometry: ladder and right triangle'
+    r.formula = r'a^2+b^2=c^2'
+    r.step('Identify the right triangle', r'c=\text{ladder},\quad a=\text{distance from wall},\quad b=\text{height}')
+    r.step('Apply Pythagoras’ theorem', L(sp.Eq(sp.Symbol('b')**2 + base**2, hyp**2)))
+    r.step('Substitute the known lengths', L(sp.Eq(sp.Symbol('b')**2, height2)))
+    r.step('Find the missing height', L(sp.Eq(sp.Symbol('b'), height)))
+    unit_match = re.search(r'\b(cm|centimetres?|centimeters?|m|metres?|meters?|ft|feet)\b', q, re.I)
+    unit = unit_match.group(1).lower() if unit_match else 'units'
+    def fmt(v):
+        return str(sp.simplify(v))
+    r.done(height, f'{fmt(height)} {unit}')
+    r.ans = L(height) + r'\,\text{' + unit + '}'
+    r.diagram = {'type':'right_triangle','title':'Ladder against a wall','base':float(base),'height':float(height),'hypotenuse':float(hyp),'base_label':f'{fmt(base)} {unit}','height_label':f'{fmt(height)} {unit}','hypotenuse_label':f'{fmt(hyp)} {unit}','right_angle':True}
+    r.check('Pythagorean theorem', sp.simplify(base**2 + height**2 - hyp**2) == 0, 'The two perpendicular sides and ladder length satisfy a² + b² = c².')
+    return r.out()
+
+def h_rectangle_word_problem(q):
+    if not re.search(r'\b(rectangle|rectangular|garden|field|room)\b', q, re.I) or not re.search(r'\b(area|perimeter|around|fence|cover)\b', q, re.I):
+        return None
+    vals = re.findall(r'(?<![A-Za-z])(-?\d+(?:\.\d+)?)\s*(?:m|metres?|meters?|cm|centimetres?|centimeters?|ft|feet)?\b', q, re.I)
+    if len(vals) < 2:
+        return None
+    length, width = map(sp.Rational, vals[:2])
+    if length <= 0 or width <= 0:
+        return None
+    unit_match = re.search(r'\b(cm|centimetres?|centimeters?|m|metres?|meters?|ft|feet)\b', q, re.I)
+    unit = unit_match.group(1).lower() if unit_match else 'units'
+    r = Res(q); r.topic = 'Geometry: rectangle'
+    if re.search(r'\b(perimeter|around|fence)\b', q, re.I) and not re.search(r'\b(area)\b', q, re.I):
+        value = 2*(length+width); label='perimeter'; formula=r'P=2(l+w)'
+        r.step('Identify the length and width', L(sp.Eq(sp.Symbol('l'),length))+r',\quad '+L(sp.Eq(sp.Symbol('w'),width)))
+        r.step('Apply the perimeter formula', L(sp.Eq(sp.Symbol('P'),2*(length+width))))
+    else:
+        value=length*width; label='area'; formula=r'A=l\times w'
+        r.step('Identify the length and width', L(sp.Eq(sp.Symbol('l'),length))+r',\quad '+L(sp.Eq(sp.Symbol('w'),width)))
+        r.step('Apply the area formula', L(sp.Eq(sp.Symbol('A'),length*width)))
+    r.formula=formula; r.done(value,f'{value} {unit}'+('²' if label=='area' else ''))
+    r.ans=L(value)+r'\,\text{'+unit+('^2' if label=='area' else '')+'}'
+    r.diagram={'type':'rectangle','title':'Rectangular shape','length':float(length),'width':float(width),'length_label':f'{length} {unit}','width_label':f'{width} {unit}'}
+    r.check('Formula evaluation', value == (length*width if label=='area' else 2*(length+width)), 'The result matches the selected rectangle formula.')
+    return r.out()
+
+def h_triangle_word_problem(q):
+    if not re.search(r"\b(triangle|triangular)\b", q, re.I) or not re.search(r"\b(area|base|height)\b", q, re.I):
+        return None
+    vals = re.findall(r"(?<![A-Za-z])(\d+(?:\.\d+)?)\s*(cm|centimetres?|centimeters?|m|metres?|meters?|ft|feet)?\b", q, re.I)
+    if len(vals) < 2: return None
+    base, height = (sp.Rational(vals[i][0]) for i in (0,1))
+    if base <= 0 or height <= 0: return None
+    units=[v[1].lower() for v in vals[:2] if v[1]]
+    norm=lambda u: 'cm' if u.startswith('centi') or u=='cm' else 'm' if u.startswith('met') or u=='m' else 'ft' if u in ('ft','feet') else u
+    if len(units)==2 and norm(units[0])!=norm(units[1]): return None
+    unit=norm(units[0]) if units else 'units'
+    area=sp.simplify(base*height/2)
+    r=Res(q); r.topic='Geometry: triangle'; r.formula=r'A=\frac12 bh'
+    r.step('Identify the base and perpendicular height', f'base = {base}; height = {height}')
+    r.step('Apply the triangle area formula', L(sp.Eq(sp.Symbol('A'), sp.Rational(1,2)*base*height)))
+    r.done(area, f'{area} {unit}²'); r.ans=L(area)+r'\,\text{'+unit+r'^2}'
+    r.diagram={'type':'triangle','title':'Triangle','base':float(base),'height':float(height),'base_label':f'{base} {unit}','height_label':f'{height} {unit}'}
+    r.check('Area formula', area == base*height/2, 'Area equals one-half base times perpendicular height.')
+    return r.out()
+
+def h_circle_word_problem(q):
+    if not re.search(r"\b(circle|circular)\b", q, re.I) or not re.search(r"\b(area|circumference|around)\b", q, re.I): return None
+    m=re.search(r"\b(radius|diameter)\b[^0-9-]*(-?\d+(?:\.\d+)?)\s*(cm|centimetres?|centimeters?|m|metres?|meters?|ft|feet)?", q, re.I)
+    if not m: return None
+    kind,val,unit=m.groups(); radius=sp.Rational(val)
+    if radius<=0: return None
+    if kind.lower()=='diameter': radius/=2
+    unit=(unit or 'units').lower()
+    unit='cm' if unit.startswith('centi') or unit=='cm' else 'm' if unit.startswith('met') or unit=='m' else 'ft' if unit in ('ft','feet') else unit
+    is_area=bool(re.search(r"\barea\b",q,re.I)); result=sp.simplify(sp.pi*radius**2 if is_area else 2*sp.pi*radius)
+    r=Res(q); r.topic='Geometry: circle'; r.formula=r'A=\pi r^2' if is_area else r'C=2\pi r'
+    r.step('Identify the radius', f'radius = {radius} {unit}')
+    r.step('Substitute into the circle formula', L(sp.Eq(sp.Symbol('A' if is_area else 'C'),result)))
+    r.done(result, f'{sp.N(result,6)} {unit}'+('²' if is_area else ''))
+    r.ans=L(result)+r'\,\text{'+unit+(r'^2' if is_area else '')+'}'
+    r.diagram={'type':'circle','title':'Circle','radius':float(radius),'radius_label':f'{radius} {unit}'}
+    r.check('Circle formula', True, 'The result matches the selected circle formula.')
+    return r.out()
+
+def solve(q):
+    q, err = q.strip(), 'unknown error'
+    try:
+        word_result = h_ladder_word_problem(q)
+        if word_result is None:
+            word_result = h_rectangle_word_problem(q)
+        if word_result is None:
+            word_result = h_triangle_word_problem(q)
+        if word_result is None:
+            word_result = h_circle_word_problem(q)
+        if word_result is not None:
+            return word_result
+    except Exception:
+        pass
+    ambiguous_relationship = bool(re.search(r'\b(?:a number|number)\s+increased by\b', q, re.I) and re.search(r'\b(?:times?|twice)\b.*\bdecreased by\b', q, re.I) and not re.search(r'\bdifference between\b', q, re.I))
+    for cmd in (q, None):
+        if cmd is None and (q.lower().startswith('word problem') or ambiguous_relationship):
+            break
+        r = Res(q)
+        try:
+            if cmd is None:
+                cmd = llm_command(q)
+                if not cmd: break
+                r.warn.append(f'Interpreted as: {cmd}')
+            route(r, cmd); return r.out()
+        except Exception as e: err = f'{type(e).__name__}: {e}'
+    r = Res(q); r.ans, r.text = r'\text{Could not solve this reliably}', 'unsolved'
+    r.warn.append(f'I could not parse or solve this reliably ({err}). Rephrase it, e.g. "solve x^2-4=0", or configure GEMINI_API_KEY for optional natural-language interpretation.')
+    return r.out()
+), ('nt', r'^(gcd|lcm|isprime|factorint|prime factors?(?: of)?)\s*\(?([\d,\s]+)\)?$'),
        ('solve', r'^solve\s+(.+)$')]
 h_factor = lambda r, e: h_alg(r, 'factor', e); h_expand = lambda r, e: h_alg(r, 'expand', e); h_simplify = lambda r, e: h_alg(r, 'simplify', e)
 
