@@ -150,3 +150,8 @@ def test_symbolic_matrix_operations_do_not_force_float_conversion():
 def test_advanced_matrix_dimension_errors_are_clear():
     result = engine.solve('determinant of [[1,2,3],[4,5,6]]')
     assert 'square' in str(result).lower()
+
+
+def test_advanced_matrix_operations_reject_empty_matrices_cleanly():
+    result = engine.solve('rref of []')
+    assert 'at least one row' in str(result).lower()

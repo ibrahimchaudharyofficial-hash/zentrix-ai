@@ -346,13 +346,15 @@ def h_ode(r, s):
 def h_matrix(r, op, s):
     """Exact symbolic matrix analysis with numerical cross-checks when entries are numeric."""
     M = sp.Matrix(P(s))
+    if M.rows == 0 or M.cols == 0:
+        raise ValueError('A matrix must contain at least one row and one column.')
     op = op.lower().strip()
     aliases = {'determinant':'det', 'inverse':'inv', 'eigenvalues':'eig', 'transpose':'tra',
                'reduced row echelon form':'rref', 'row-reduced echelon form':'rref',
                'null space':'null', 'nullspace':'null', 'column space':'col', 'row space':'row',
                'lu decomposition':'lu', 'qr decomposition':'qr', 'singular value decomposition':'svd', 'rank':'ran'}
     op = aliases.get(op, op)
-    r.topic, r.formula = 'Linear algebra · Matrix analysis', r' A\\mathbf{x}=\\mathbf{b}'
+    r.topic, r.formula = 'Linear algebra · Matrix analysis', r' A\mathbf{x}=\mathbf{b}'
     r.step('Input matrix', L(M))
     numeric = all(v.is_number and v.is_real is not False for v in M)
     A = np.array(M.tolist(), dtype=float) if numeric else None
