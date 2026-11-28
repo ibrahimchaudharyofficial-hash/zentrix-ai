@@ -123,3 +123,30 @@ def test_research_engine_rejects_invalid_variables_points_and_unsafe_input():
         analyze_scalar_field("x+y", ["x", "y"], {"x": 0})
     with pytest.raises(ValueError):
         analyze_vector_field(["x"], ["x", "y"], {"x": 0, "y": 0})
+
+
+def test_advanced_matrix_operations():
+    cases = [
+        ('rref of [[1,2,3],[2,4,6]]', 'Matrix([[1, 2, 3], [0, 0, 0]])'),
+        ('nullspace of [[1,2,3],[2,4,6]]', 'Matrix([[ -2], [1], [0]])'),
+        ('column space of [[1,2],[2,4]]', 'Matrix([[1], [2]])'),
+        ('row space of [[1,2],[2,4]]', 'Matrix([[1, 2]])'),
+        ('lu of [[4,3],[6,3]]', 'P·A = L·U'),
+        ('qr of [[1,0],[0,1]]', 'Q·R = A'),
+        ('svd of [[1,0],[0,2]]', 'SVD: A = U Σ Vᵀ'),
+        ('condition number of [[1,0],[0,2]]', '1.9999999999999996'),
+    ]
+    for question, expected in cases:
+        result = engine.solve(question)
+        assert expected in str(result), (question, result)
+
+
+def test_symbolic_matrix_operations_do_not_force_float_conversion():
+    result = engine.solve('rref of [[x,1],[0,x]]')
+    assert 'Could not solve' not in str(result)
+    assert 'x' in str(result)
+
+
+def test_advanced_matrix_dimension_errors_are_clear():
+    result = engine.solve('determinant of [[1,2,3],[4,5,6]]')
+    assert 'square' in str(result).lower()

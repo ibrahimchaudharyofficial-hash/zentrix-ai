@@ -344,22 +344,76 @@ def h_ode(r, s):
     r.check('Substituted back into the ODE (sympy.checkodesol)', all(sp.checkodesol(eq, q)[0] is True for q in sols))
 
 def h_matrix(r, op, s):
-    M = sp.Matrix(P(s)); op = op.lower()[:3]; r.topic, r.formula = 'Linear algebra', r'\det\begin{pmatrix}a&b\\c&d\end{pmatrix}=ad-bc'
-    r.step('Matrix', L(M)); A = np.array(M.tolist(), dtype=float)
+    """Exact symbolic matrix analysis with numerical cross-checks when entries are numeric."""
+    M = sp.Matrix(P(s))
+    op = op.lower().strip()
+    aliases = {'determinant':'det', 'inverse':'inv', 'eigenvalues':'eig', 'transpose':'tra',
+               'reduced row echelon form':'rref', 'row-reduced echelon form':'rref',
+               'null space':'null', 'nullspace':'null', 'column space':'col', 'row space':'row',
+               'lu decomposition':'lu', 'qr decomposition':'qr', 'singular value decomposition':'svd'}
+    op = aliases.get(op, op)
+    r.topic, r.formula = 'Linear algebra · Matrix analysis', r' A\\mathbf{x}=\\mathbf{b}'
+    r.step('Input matrix', L(M))
+    numeric = all(v.is_number and v.is_real is not False for v in M)
+    A = np.array(M.tolist(), dtype=float) if numeric else None
     if op == 'det':
-        d = M.det(); r.step('Determinant', L(sp.Eq(sp.Symbol(r'\det A'), d)), 'Cofactor expansion (ad − bc for 2×2).'); r.done(d)
-        r.check('NumPy determinant agrees', abs(np.linalg.det(A) - float(d)) < 1e-8 * (1 + abs(float(d))), f'numpy = {np.linalg.det(A):.10g}')
+        if M.rows != M.cols: raise ValueError('Determinant is defined only for square matrices.')
+        ans = M.det(); r.step('Determinant', L(ans)); r.done(ans)
+        if A is not None: r.check('NumPy determinant agrees', abs(np.linalg.det(A)-float(ans)) < 1e-8*(1+abs(float(ans))))
     elif op == 'inv':
-        if M.det() == 0: r.done(r'\text{not invertible (det = 0)}', 'not invertible'); r.warn.append('Determinant is 0, so no inverse exists.'); r.check('Singular matrix', True, 'det = 0'); return
-        Mi = M.inv(); r.step('Determinant', L(sp.Eq(sp.Symbol(r'\det A'), M.det()))); r.step('Inverse', r'A^{-1}=' + L(Mi), 'The inverse is the matrix that satisfies A A^{-1}=I.'); r.done(Mi)
-        r.check('A · A⁻¹ equals the identity', M * Mi == sp.eye(M.rows)); r.check('NumPy inverse agrees', np.allclose(np.linalg.inv(A), np.array(Mi.tolist(), float)))
+        if M.rows != M.cols: raise ValueError('Inverse requires a square matrix.')
+        if M.det() == 0: raise ValueError('This matrix is singular (determinant is zero), so it has no inverse.')
+        ans=M.inv(); r.step('Exact inverse', L(ans)); r.done(ans)
+        r.check('A · A⁻¹ = I', M*ans == sp.eye(M.rows))
+        if A is not None: r.check('NumPy inverse agrees', np.allclose(np.linalg.inv(A),np.array(ans.tolist(),float)))
     elif op == 'eig':
-        ev = M.eigenvals(); lam=sp.Symbol('\\lambda'); char=sp.factor(M.charpoly(lam).as_expr()); r.step('Characteristic equation', L(sp.Eq(char, 0))); r.step('Solve the characteristic equation', ',\\ '.join(L(sp.Eq(lam, k)) + (f'\\ (multiplicity {m})' if m > 1 else '') for k, m in ev.items())); eigvecs=M.eigenvects(); r.step('Eigenvectors', '; '.join(f'for λ={L(value)}: span\\left\\{{{L(sp.Matrix(basis[0]))}\\right\\}}' for value,mult,basis in eigvecs)); r.done(',\\ '.join(f'λ={L(k)} (×{m})' for k, m in ev.items()), str(ev))
-        nv = np.linalg.eigvals(A); r.check('NumPy eigenvalues agree', all(min(abs(complex(sp.N(k)) - w) for w in nv) < 1e-6 for k in ev), str(np.round(nv, 6).tolist()))
+        if M.rows != M.cols: raise ValueError('Eigenvalues require a square matrix.')
+        ev=M.eigenvals(); lam=sp.Symbol('\\lambda'); char=sp.factor(M.charpoly(lam).as_expr())
+        r.step('Characteristic polynomial', L(char)); r.step('Eigenvalues', ', '.join(f'{L(k)} (multiplicity {v})' for k,v in ev.items()))
+        r.step('Eigenvectors', '; '.join(f'λ={L(val)}: span({L(sp.Matrix(basis))})' for val,mult,basis in M.eigenvects()))
+        r.done(', '.join(f'λ={L(k)} × {v}' for k,v in ev.items()), str(ev))
+        if A is not None:
+            nv=np.linalg.eigvals(A); r.check('NumPy eigenvalues agree', all(min(abs(complex(sp.N(k))-w) for w in nv)<1e-6 for k in ev))
     elif op == 'tra':
-        T = M.T; r.formula = r'A^T_{ij}=A_{ji}'; r.step('Swap rows and columns', L(T)); r.done(T); r.check('Transpose dimensions reversed', T.shape == (M.cols, M.rows))
+        ans=M.T; r.step('Transpose (swap rows and columns)',L(ans)); r.done(ans); r.check('Dimensions reversed',ans.shape==(M.cols,M.rows))
+    elif op == 'ran':
+        ans=M.rank(); r.step('Rank',L(ans)); r.done(ans)
+        if A is not None: r.check('NumPy matrix rank agrees',int(np.linalg.matrix_rank(A))==ans)
+    elif op == 'rref':
+        ans,pivots=M.rref(); r.step('Reduced row-echelon form',L(ans)); r.step('Pivot columns (1-based)',str([p+1 for p in pivots])); r.done(ans)
+        r.check('RREF is row-equivalent and reduced', all(ans[p,j] == (1 if p == j else 0) for p in range(len(pivots)) for j in pivots))
+    elif op in ('null','col','row'):
+        if op == 'null':
+            basis=M.nullspace(); title='Null space'; ans=sp.Matrix.hstack(*basis) if basis else sp.zeros(M.cols,0)
+        elif op == 'col':
+            basis=M.columnspace(); title='Column-space basis'; ans=sp.Matrix.hstack(*basis) if basis else sp.zeros(M.rows,0)
+        else:
+            basis=M.rowspace(); title='Row-space basis'; ans=sp.Matrix.vstack(*basis) if basis else sp.zeros(0,M.cols)
+        r.step(title + ' basis',L(ans)); r.step('Basis dimension',str(len(basis))); r.done(ans)
+        if op == 'null': r.check('Every null-space basis vector satisfies A·v = 0',all(M*v==sp.zeros(M.rows,1) for v in basis))
+        else: r.check('Basis vectors are linearly independent',len(basis)==ans.rows if op=='row' else len(basis)==ans.cols)
+    elif op == 'lu':
+        if M.rows != M.cols: raise ValueError('LU decomposition currently requires a square matrix.')
+        Lm,Um,perm=M.LUdecomposition(); Pm=sp.eye(M.rows).permute_rows(perm)
+        r.step('Permutation matrix',L(Pm)); r.step('Lower triangular factor',L(Lm)); r.step('Upper triangular factor',L(Um)); r.done(f'P={L(Pm)}, L={L(Lm)}, U={L(Um)}')
+        r.check('P·A = L·U',Pm*M==Lm*Um)
+    elif op == 'qr':
+        Q,Rm=M.QRdecomposition(); r.step('Orthogonal factor Q',L(Q)); r.step('Upper-triangular factor R',L(Rm)); r.done(f'Q={L(Q)}, R={L(Rm)}')
+        r.check('Q·R = A',Q*Rm==M)
+        r.check('Q columns are orthonormal',Q.T*Q==sp.eye(Q.cols))
+    elif op == 'svd':
+        if A is None: raise ValueError('SVD requires a real numeric matrix; symbolic matrices are supported by the other exact operations.')
+        u,sv,vt=np.linalg.svd(A,full_matrices=False); ans=np.diag(sv)
+        r.step('Left singular vectors U',L(sp.Matrix(np.round(u,8)))); r.step('Singular values',str(np.round(sv,8).tolist()))
+        r.step('Right singular vectors Vᵀ',L(sp.Matrix(np.round(vt,8)))); r.done('SVD: A = U Σ Vᵀ')
+        r.check('SVD reconstruction',np.allclose(u@ans@vt,A,rtol=1e-8,atol=1e-8))
+    elif op in ('cond','condition number'):
+        if A is None: raise ValueError('Condition number requires a real numeric matrix.')
+        ans=float(np.linalg.cond(A)); r.step('2-norm condition number',f'{ans:.10g}')
+        r.step('Interpretation','Large values indicate that small input errors may cause large solution errors.')
+        r.done(ans); r.check('Finite or infinite numerical result',not np.isnan(ans))
     else:
-        k = M.rank(); r.step('Rank', L(sp.Eq(sp.Symbol(r'\operatorname{rank}A'), k))); r.done(k); r.check('NumPy matrix_rank agrees', int(np.linalg.matrix_rank(A)) == k)
+        raise ValueError('Unsupported matrix operation. Try determinant, inverse, eigenvalues, rank, transpose, rref, nullspace, columnspace, rowspace, lu, qr, svd, or condition number.')
 
 def h_matrix_binary(r, op, left, right):
     """Perform a matrix operation after safe parsing of two nested-list literals."""
@@ -826,7 +880,7 @@ def llm_command(q):
         'Never solve it, explain it, use markdown, or return anything except the command. '
         'Supported forms: solve <equation>; derivative of <expression>; integrate <expression>; '
         'limit <expression> as x-><value>; factor <expression>; expand <expression>; simplify <expression>; '
-        'determinant of [[...]]; inverse of [[...]]; eigenvalues of [[...]]; rank of [[...]]. '
+        'determinant of [[...]]; inverse of [[...]]; eigenvalues of [[...]]; rank of [[...]]; rref of [[...]]; nullspace of [[...]]; column space of [[...]]; row space of [[...]]; LU/QR/SVD decomposition; condition number. '
         'Physics commands: physics force mass=... acceleration=...; physics work force=... distance=...; '
         'physics power work=... time=...; physics ohms voltage=... resistance=...; '
         'physics kinetic energy mass=... velocity=...; physics potential energy mass=... height=...; '
