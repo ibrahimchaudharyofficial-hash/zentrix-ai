@@ -999,8 +999,15 @@ def analyze_plot(p: Plot):
         stationary = []
         for point in ([] if constant_function else locate_zeros(dfn)):
             curvature = evaluate(d2fn, point)
-            kind = 'local minimum' if curvature > 1e-7 else 'local maximum' if curvature < -1e-7 else 'stationary / flat'
+            kind = 'local minimum' if curvature > 0 else 'local maximum' if curvature < 0 else 'stationary / flat'
             stationary.append({'x': round(point, 8), 'y': round(evaluate(fn, point), 8), 'kind': kind})
+        if not identically_zero:
+            function_scale = max((abs(evaluate(fn, point)) for point in np.linspace(p.xmin, p.xmax, 65) if math.isfinite(evaluate(fn, point))), default=0.0)
+            root_tolerance = max(1e-300, 1e-10 * function_scale)
+            for point in stationary:
+                if abs(point['y']) <= root_tolerance and not any(abs(point['x'] - root['x']) < 1e-5 for root in roots):
+                    roots.append({'x': point['x'], 'y': 0.0})
+            roots.sort(key=lambda item: item['x'])
         y_intercept = evaluate(fn, 0) if p.xmin <= 0 <= p.xmax else None
         return {
             'expression': str(expression),

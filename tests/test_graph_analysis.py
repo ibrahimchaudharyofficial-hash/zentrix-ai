@@ -53,3 +53,13 @@ def test_graph_analysis_uses_scale_aware_root_tolerance():
     assert response.status_code == 200
     assert len(response.json()['roots']) == 1
     assert abs(response.json()['roots'][0]['x'] - 1) < 1e-5
+
+
+def test_graph_analysis_detects_tangent_roots_at_turning_points():
+    client = TestClient(main.app)
+    response = client.post('/api/plot/analyze', json={'expr': '(x-1)^2', 'xmin': -2, 'xmax': 4})
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data['roots']) == 1
+    assert data['roots'][0]['x'] == 1.0
+    assert data['critical_points'][0]['kind'] == 'local minimum'
