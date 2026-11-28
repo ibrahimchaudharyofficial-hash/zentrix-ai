@@ -381,7 +381,7 @@ def h_matrix(r, op, s):
         if A is not None: r.check('NumPy matrix rank agrees',int(np.linalg.matrix_rank(A))==ans)
     elif op == 'rref':
         ans,pivots=M.rref(); r.step('Reduced row-echelon form',L(ans)); r.step('Pivot columns (1-based)',str([p+1 for p in pivots])); r.done(ans)
-        r.check('RREF is row-equivalent and reduced', all(ans[p,j] == (1 if p == j else 0) for p in range(len(pivots)) for j in pivots))
+        r.check('RREF pivot columns are reduced', all(ans[row,col] == 1 and all(ans[other,col] == 0 for other in range(ans.rows) if other != row) for row,col in enumerate(pivots)))
     elif op in ('null','col','row'):
         if op == 'null':
             basis=M.nullspace(); title='Null space'; ans=sp.Matrix.hstack(*basis) if basis else sp.zeros(M.cols,0)
